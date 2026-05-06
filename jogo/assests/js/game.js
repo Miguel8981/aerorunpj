@@ -71,11 +71,11 @@ const CONFIG = {
 const IMAGES = {};
 let imagesLoaded = 0;
 const IMAGE_LIST = {
-  aviao:          '../img/aviao.png',
-  passaro:        '../img/passaro.png',
-  ceu_dia:        '../img/ceu_dia.png',
-  ceu_por_do_sol: '../img/ceu_por_do_sol.png',
-  ceu_noite:      '../img/ceu_noite.png',
+  aviao:          'assestsimg/aviao.png',
+  passaro:        'assests/img/passaro.png',
+  ceu_dia:        'assests/img/ceu_dia.png',
+  ceu_por_do_sol: 'assests/img/ceu_por_do_sol.png',
+  ceu_noite:      'assests/img/ceu_noite.png',
 };
 function loadImages(callback) {
   const total = Object.keys(IMAGE_LIST).length;
