@@ -71,7 +71,7 @@ const CONFIG = {
 const IMAGES = {};
 let imagesLoaded = 0;
 const IMAGE_LIST = {
-  aviao:          'assestsimg/aviao.png',
+  aviao:          'assests/img/aviao.png',
   passaro:        'assests/img/passaro.png',
   ceu_dia:        'assests/img/ceu_dia.png',
   ceu_por_do_sol: 'assests/img/ceu_por_do_sol.png',
