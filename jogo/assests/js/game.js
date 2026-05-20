@@ -10,10 +10,10 @@ const CONFIG = {
       birdFreq:      0.006,
       birdSpeedVar:  0.8,
       birdMaxCount:  2,
-      speed:         3.0,
-      questionFreq:  0.012,   // perguntas spawnando com frequência para ter tempo de acertar 3
+      speed:         7.0,
+      questionFreq:  1.012,   // perguntas spawnando com frequência para ter tempo de acertar 3
       fuelGainBonus: 6,
-      timeLimit:     40,       // segundos para completar a fase
+      timeLimit:     60,       // segundos para completar a fase
       correctNeeded: 3,        // acertos necessários para avançar
       skyImg:       'ceu_dia',
       cloudColor:   '#b0d8ff', cloudAlpha: 0.10,
@@ -27,10 +27,10 @@ const CONFIG = {
       birdFreq:      0.026,
       birdSpeedVar:  1.5,
       birdMaxCount:  6,
-      speed:         5.0,
-      questionFreq:  0.010,
+      speed:         7.0,
+      questionFreq:  1.010,
       fuelGainBonus: 3,
-      timeLimit:     50,
+      timeLimit:     60,
       correctNeeded: 3,
       skyImg:       'ceu_por_do_sol',
       cloudColor:   '#ffb07a', cloudAlpha: 0.18,
@@ -45,7 +45,7 @@ const CONFIG = {
       birdSpeedVar:  2.5,
       birdMaxCount:  12,
       speed:         7.0,
-      questionFreq:  0.009,
+      questionFreq:  1.000,
       fuelGainBonus: 0,
       timeLimit:     60,
       correctNeeded: 3,
@@ -133,7 +133,8 @@ function showScreen(name) {
 }
 
 // ─── BUTTONS ───────────────────────────────────────────────────────────────
-document.getElementById('btn-start').addEventListener('click', () => {
+document.getElementById('btn-start').addEventListener('click', e => {
+  e.currentTarget.blur();
   if (imagesLoaded < Object.keys(IMAGE_LIST).length) { loadImages(startGame); } else { startGame(); }
 });
 document.getElementById('btn-instructions').addEventListener('click', () => showScreen('instructions'));
@@ -158,6 +159,7 @@ function startGame() {
   state = createInitialState();
   state.running  = true;
   state.lastTick = performance.now();
+  pauseOverlay.classList.add('hidden');
   resizeCanvas();
   state.planeY = canvas.height / 2;
   spawnInitialClouds();
@@ -198,23 +200,76 @@ function advancePhase() {
     endGame(true, 'Parabéns! Você completou todas as fases e pousou com sucesso!');
     return;
   }
-  state.phase++;
-  const pc = CONFIG.phases[state.phase];
-  state.phaseTimeLeft = pc.timeLimit;
-  state.phaseCorrect  = 0;
-  state.usedQuestions = [];
-  state.birds  = [];
-  state.qmarks = [];
-  state.lastTick = performance.now();
-  // Bônus de combustível ao avançar
-  state.fuel = Math.min(100, state.fuel + 20);
-  showScorePopup(canvas.width / 2, canvas.height / 2 - 60, '⛽ +20');
-  hudPhase.textContent = `Fase ${state.phase + 1}`;
-  showPhaseBanner(pc.name, pc.description);
-  applyPhaseTheme(state.phase);
-  state.clouds = [];
-  spawnInitialClouds();
-  updatePhaseHUD();
+
+  // Para o loop durante a transição
+  state.running = false;
+  cancelAnimationFrame(state.animFrame);
+
+  const fromPhase = state.phase;
+  const toPhase   = state.phase + 1;
+  const pc        = CONFIG.phases[toPhase];
+  const phaseNames = ['Início do Voo', 'Voo Intermediário', 'Aproximação do Aeroporto'];
+
+  // Cria o overlay de transição cinematográfica
+  const overlay = document.createElement('div');
+  overlay.id = 'phase-transition';
+  overlay.innerHTML = `
+    <div class="pt-bar pt-bar-top"></div>
+    <div class="pt-bar pt-bar-bottom"></div>
+    <div class="pt-content">
+      <div class="pt-completed">FASE ${fromPhase + 1} COMPLETA</div>
+      <div class="pt-check">✓</div>
+      <div class="pt-divider"></div>
+      <div class="pt-next-label">PRÓXIMA FASE</div>
+      <div class="pt-number">${toPhase + 1}</div>
+      <div class="pt-name">${phaseNames[toPhase]}</div>
+      <div class="pt-stats">
+        <div class="pt-stat"><span>⭐ Pontuação</span><span>${state.score}</span></div>
+        <div class="pt-stat"><span>⛽ Combustível</span><span>${Math.floor(state.fuel)}%</span></div>
+        <div class="pt-stat"><span>⏱ Próximo Tempo</span><span>${pc.timeLimit}s</span></div>
+      </div>
+      <div class="pt-loading"><div class="pt-loading-fill"></div></div>
+    </div>
+  `;
+  document.getElementById('screen-game').appendChild(overlay);
+
+  // Sequência de animação
+  const $ = s => overlay.querySelector(s);
+  requestAnimationFrame(() => {
+    // 1. Barras entram
+    setTimeout(() => {
+      $('.pt-bar-top').classList.add('in');
+      $('.pt-bar-bottom').classList.add('in');
+    }, 50);
+    // 2. Conteúdo aparece
+    setTimeout(() => overlay.classList.add('show-content'), 550);
+    // 3. Barra de loading
+    setTimeout(() => $('.pt-loading-fill').style.width = '100%', 700);
+    // 4. Saída e início da próxima fase
+    setTimeout(() => {
+      overlay.classList.add('exit');
+      setTimeout(() => {
+        overlay.remove();
+        // Aplica a nova fase
+        state.phase        = toPhase;
+        state.phaseTimeLeft = pc.timeLimit;
+        state.phaseCorrect  = 0;
+        state.usedQuestions = [];
+        state.birds  = [];
+        state.qmarks = [];
+        state.lastTick = performance.now();
+        state.fuel = Math.min(100, state.fuel + 20);
+        state.clouds = [];
+        spawnInitialClouds();
+        applyPhaseTheme(state.phase);
+        updatePhaseHUD();
+        // Reinicia o loop
+        state.running = true;
+        state.animFrame = requestAnimationFrame(loop);
+        showPhaseBanner(pc.name, pc.description);
+      }, 600);
+    }, 3800);
+  });
 }
 
 // ─── RESIZE ────────────────────────────────────────────────────────────────
@@ -732,6 +787,9 @@ function showPhaseBanner(title, description) {
 
 // ─── PAUSE ─────────────────────────────────────────────────────────────────
 function togglePause() {
+  // Só funciona se o jogo estiver rodando na tela de jogo
+  if (!screens.game.classList.contains('active')) return;
+  if (!state.running && !state.paused) return;
   state.paused = !state.paused;
   // Reajusta lastTick ao retomar para não penalizar o tempo
   if (!state.paused) state.lastTick = performance.now();
