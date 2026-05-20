@@ -808,6 +808,21 @@ function endGame(won, message) {
               : state.score >= 50 ? '🥈 Medalha de Prata!'
               : '🥉 Medalha de Bronze!';
   document.getElementById('final-medal').textContent = medal;
+
+  // Mensagem de habilidade baseada na pontuação
+  const skillMsg = state.score >= 90
+    ? '🌟 Desempenho Excelente! O aluno demonstrou domínio completo dos conceitos e não precisa de recuperação.'
+    : state.score >= 80
+    ? '✅ Muito Bom! O aluno compreendeu bem os conteúdos e está apto para avançar.'
+    : state.score >= 70
+    ? '👍 Bom Desempenho! O aluno apresentou boa compreensão, com pequenas lacunas a revisar.'
+    : state.score >= 50
+    ? '📚 Desempenho Regular. O aluno precisa revisar alguns conceitos para consolidar o aprendizado.'
+    : state.score >= 30
+    ? '⚠️ Atenção! O aluno apresentou dificuldades e precisa de reforço nos conteúdos estudados.'
+    : '🔁 Recuperação Necessária. O aluno não atingiu o nível mínimo e precisa de acompanhamento pedagógico.';
+  document.getElementById('skill-message').textContent = skillMsg;
+
   showScreen('gameover');
 }
 
