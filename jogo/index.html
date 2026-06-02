@@ -9,6 +9,85 @@
 </head>
 <body>
 
+  <!-- BOTÃO DE ACESSIBILIDADE FIXO (sempre visível) -->
+  <button id="btn-accessibility" class="a11y-fab" title="Acessibilidade" aria-label="Abrir menu de acessibilidade">♿</button>
+
+  <!-- SVG oculto com filtros de daltonismo -->
+  <svg id="colorblind-filters" aria-hidden="true" focusable="false">
+    <defs>
+      <!-- Deuteranopia (deficiência verde) -->
+      <filter id="cb-deuteranopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="
+          0.367  0.861 -0.228  0  0
+          0.280  0.673  0.047  0  0
+         -0.012  0.043  0.969  0  0
+          0      0      0      1  0"/>
+      </filter>
+      <!-- Protanopia (deficiência vermelha) -->
+      <filter id="cb-protanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="
+          0.152  1.053 -0.205  0  0
+          0.115  0.786  0.099  0  0
+         -0.004 -0.048  1.052  0  0
+          0      0      0      1  0"/>
+      </filter>
+      <!-- Tritanopia (deficiência azul) -->
+      <filter id="cb-tritanopia" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="
+          1.256 -0.077 -0.180  0  0
+         -0.078  0.931  0.148  0  0
+          0.005  0.691  0.304  0  0
+          0      0      0      1  0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- MODAL DE ACESSIBILIDADE -->
+  <div id="accessibility-modal" class="accessibility-modal hidden" role="dialog" aria-modal="true" aria-labelledby="a11y-title">
+    <div class="accessibility-panel">
+      <div class="accessibility-header">
+        <span class="accessibility-icon">♿</span>
+        <h2 id="a11y-title">Acessibilidade</h2>
+      </div>
+
+      <!-- Fonte -->
+      <div class="accessibility-section">
+        <label class="accessibility-label">Tamanho da Fonte</label>
+        <div class="font-size-controls">
+          <button class="font-btn" id="font-small"  title="Pequeno">A<sub>-</sub></button>
+          <button class="font-btn active" id="font-medium" title="Médio">A</button>
+          <button class="font-btn" id="font-large"  title="Grande">A<sup>+</sup></button>
+        </div>
+        <div class="font-preview">
+          <span id="font-preview-text">Pilote seu avião até o aeroporto!</span>
+        </div>
+      </div>
+
+      <!-- Tema -->
+      <div class="accessibility-section">
+        <label class="accessibility-label">Tema de Cores</label>
+        <div class="theme-options">
+          <button class="theme-opt-btn active" id="theme-dark"     title="Tema Escuro">🌙 Escuro</button>
+          <button class="theme-opt-btn"        id="theme-light"    title="Tema Claro">☀️ Claro</button>
+          <button class="theme-opt-btn"        id="theme-contrast" title="Alto Contraste">⬛ Alto Contraste</button>
+        </div>
+      </div>
+
+      <!-- Daltonismo -->
+      <div class="accessibility-section">
+        <label class="accessibility-label">Modo Daltonismo</label>
+        <div class="theme-options">
+          <button class="theme-opt-btn active" id="cb-none"          title="Sem filtro">Nenhum</button>
+          <button class="theme-opt-btn"        id="cb-deuteranopia-btn" title="Deficiência de verde">Deuteranopia</button>
+          <button class="theme-opt-btn"        id="cb-protanopia-btn"   title="Deficiência de vermelho">Protanopia</button>
+          <button class="theme-opt-btn"        id="cb-tritanopia-btn"   title="Deficiência de azul">Tritanopia</button>
+        </div>
+      </div>
+
+      <button id="btn-close-accessibility" class="btn-primary btn-close-a11y">FECHAR</button>
+    </div>
+  </div>
+
   <!-- TELA INICIAL -->
   <div id="screen-start" class="screen active">
     <div class="stars-bg"></div>

@@ -130,6 +130,9 @@ const hud              = document.getElementById('hud');
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
+  // Botão de acessibilidade só aparece fora do jogo
+  const fab = document.getElementById('btn-accessibility');
+  if (fab) fab.style.display = (name === 'game') ? 'none' : '';
 }
 
 // ─── BUTTONS ───────────────────────────────────────────────────────────────
@@ -827,4 +830,102 @@ function endGame(won, message) {
 }
 
 // Preload
-loadImages(() => {});
+
+
+/* ===========================
+   ACESSIBILIDADE
+   =========================== */
+(function () {
+  const PREF_FONT  = 'aerorun_font_size';
+  const PREF_THEME = 'aerorun_theme';
+  const PREF_CB    = 'aerorun_colorblind';
+
+  const modal    = document.getElementById('accessibility-modal');
+  const btnOpen  = document.getElementById('btn-accessibility');
+  const btnClose = document.getElementById('btn-close-accessibility');
+
+  // Fonte
+  const fontSmall  = document.getElementById('font-small');
+  const fontMedium = document.getElementById('font-medium');
+  const fontLarge  = document.getElementById('font-large');
+  const previewText = document.getElementById('font-preview-text');
+
+  // Tema
+  const themeDark     = document.getElementById('theme-dark');
+  const themeLight    = document.getElementById('theme-light');
+  const themeContrast = document.getElementById('theme-contrast');
+
+  // Daltonismo
+  const cbNone         = document.getElementById('cb-none');
+  const cbDeutBtn      = document.getElementById('cb-deuteranopia-btn');
+  const cbProtBtn      = document.getElementById('cb-protanopia-btn');
+  const cbTritBtn      = document.getElementById('cb-tritanopia-btn');
+
+  const THEMES = ['dark', 'light', 'contrast'];
+  const CB_MODES = ['none', 'deuteranopia', 'protanopia', 'tritanopia'];
+
+  let currentFont  = localStorage.getItem(PREF_FONT)  || 'medium';
+  let currentTheme = localStorage.getItem(PREF_THEME) || 'dark';
+  let currentCB    = localStorage.getItem(PREF_CB)    || 'none';
+
+  /* ---- Fonte ---- */
+  function applyFont(size) {
+    document.body.classList.remove('font-small', 'font-medium', 'font-large');
+    document.body.classList.add('font-' + size);
+    currentFont = size;
+    localStorage.setItem(PREF_FONT, size);
+    [fontSmall, fontMedium, fontLarge].forEach(b => b.classList.remove('active'));
+    ({ small: fontSmall, medium: fontMedium, large: fontLarge })[size].classList.add('active');
+    previewText.style.fontSize = size === 'small' ? '12px' : size === 'large' ? '18px' : '15px';
+  }
+
+  /* ---- Tema ---- */
+  function applyTheme(theme) {
+    currentTheme = theme;
+    THEMES.forEach(t => document.body.classList.remove('theme-' + t));
+    if (theme !== 'dark') document.body.classList.add('theme-' + theme);
+    localStorage.setItem(PREF_THEME, theme);
+
+    [themeDark, themeLight, themeContrast].forEach(b => b.classList.remove('active'));
+    ({ dark: themeDark, light: themeLight, contrast: themeContrast })[theme].classList.add('active');
+  }
+
+  /* ---- Daltonismo ---- */
+  function applyCB(mode) {
+    currentCB = mode;
+    CB_MODES.forEach(m => {
+      if (m !== 'none') document.body.classList.remove('colorblind-' + m);
+    });
+    if (mode !== 'none') document.body.classList.add('colorblind-' + mode);
+    localStorage.setItem(PREF_CB, mode);
+
+    [cbNone, cbDeutBtn, cbProtBtn, cbTritBtn].forEach(b => b.classList.remove('active'));
+    ({ none: cbNone, deuteranopia: cbDeutBtn, protanopia: cbProtBtn, tritanopia: cbTritBtn })[mode].classList.add('active');
+  }
+
+  /* ---- Init ---- */
+  applyFont(currentFont);
+  applyTheme(currentTheme);
+  applyCB(currentCB);
+
+  /* ---- Eventos ---- */
+  btnOpen.addEventListener('click',  () => modal.classList.remove('hidden'));
+  btnClose.addEventListener('click', () => modal.classList.add('hidden'));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) modal.classList.add('hidden');
+  });
+
+  fontSmall.addEventListener('click',  () => applyFont('small'));
+  fontMedium.addEventListener('click', () => applyFont('medium'));
+  fontLarge.addEventListener('click',  () => applyFont('large'));
+
+  themeDark.addEventListener('click',     () => applyTheme('dark'));
+  themeLight.addEventListener('click',    () => applyTheme('light'));
+  themeContrast.addEventListener('click', () => applyTheme('contrast'));
+
+  cbNone.addEventListener('click',    () => applyCB('none'));
+  cbDeutBtn.addEventListener('click', () => applyCB('deuteranopia'));
+  cbProtBtn.addEventListener('click', () => applyCB('protanopia'));
+  cbTritBtn.addEventListener('click', () => applyCB('tritanopia'));
+})();
