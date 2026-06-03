@@ -103,6 +103,7 @@ function createInitialState() {
     phaseCorrect:  0,                          // acertos nesta fase
     lastTick: 0,                               // timestamp do último segundo
     usedQuestions: [],                         // IDs já usados para não repetir
+    _stars: null,                              // estrelas geradas na fase 3
   };
 }
 
@@ -444,27 +445,316 @@ function updateHUD() {
 }
 
 // ─── DRAW ──────────────────────────────────────────────────────────────────
+// ─── DRAW SKY (procedural, fase-específico, sem repetição de imagens) ──────
+function drawSkyPhase0(W, H) {
+  const top = CONFIG.hudHeight;
+  const gameH = H - top;
+
+  const skyGrad = ctx.createLinearGradient(0, top, 0, H);
+  skyGrad.addColorStop(0.0, '#1a6fbb');
+  skyGrad.addColorStop(0.3, '#2e93d1');
+  skyGrad.addColorStop(0.65, '#72c0f0');
+  skyGrad.addColorStop(0.85, '#b8dff8');
+  skyGrad.addColorStop(1.0, '#d9eefd');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, top, W, gameH);
+
+  const horizGlow = ctx.createLinearGradient(0, H - gameH * 0.3, 0, H);
+  horizGlow.addColorStop(0, 'rgba(255,255,255,0)');
+  horizGlow.addColorStop(1, 'rgba(220,240,255,0.25)');
+  ctx.fillStyle = horizGlow;
+  ctx.fillRect(0, top, W, gameH);
+
+  const sunX = W * 0.82;
+  const sunY = top + gameH * 0.18;
+  const sunR  = Math.min(W, gameH) * 0.07;
+
+  const halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.8, sunX, sunY, sunR * 3.5);
+  halo.addColorStop(0,   'rgba(255,245,160,0.32)');
+  halo.addColorStop(0.4, 'rgba(255,220,80,0.12)');
+  halo.addColorStop(1,   'rgba(255,200,0,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR * 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(sunX, sunY);
+  ctx.rotate(state.scrollX * 0.002);
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2;
+    const inner = sunR * 1.35;
+    const outer = sunR * (1.9 + 0.2 * Math.sin(state.scrollX * 0.015 + i));
+    ctx.strokeStyle = `rgba(255,230,80,${0.18 + 0.08 * Math.sin(i * 1.3)})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const sunCore = ctx.createRadialGradient(sunX - sunR*0.2, sunY - sunR*0.2, 0, sunX, sunY, sunR);
+  sunCore.addColorStop(0,   '#fffde0');
+  sunCore.addColorStop(0.5, '#ffe566');
+  sunCore.addColorStop(1,   '#ffcc00');
+  ctx.fillStyle = sunCore;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,220,80,0.6)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const hazeGrad = ctx.createLinearGradient(0, H - gameH * 0.22, 0, H);
+  hazeGrad.addColorStop(0, 'rgba(200,230,255,0)');
+  hazeGrad.addColorStop(1, 'rgba(200,230,255,0.18)');
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(0, top, W, gameH);
+
+  const groundY = H - gameH * 0.08;
+  const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
+  groundGrad.addColorStop(0, '#3d8a40');
+  groundGrad.addColorStop(0.4, '#2a6630');
+  groundGrad.addColorStop(1, '#1a3a20');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, groundY, W, H - groundY);
+
+  const fieldScroll = (state.scrollX * 0.3) % (W * 0.4);
+  for (let i = -1; i < 4; i++) {
+    const fx = i * W * 0.4 - fieldScroll;
+    ctx.fillStyle = 'rgba(45,110,50,0.5)';
+    ctx.fillRect(fx, groundY, W * 0.2, H - groundY);
+  }
+}
+
+function drawSkyPhase1(W, H) {
+  const top = CONFIG.hudHeight;
+  const gameH = H - top;
+
+  const skyGrad = ctx.createLinearGradient(0, top, 0, H);
+  skyGrad.addColorStop(0.0, '#0d0520');
+  skyGrad.addColorStop(0.15, '#1a0a35');
+  skyGrad.addColorStop(0.4,  '#5c1a2a');
+  skyGrad.addColorStop(0.65, '#c4402a');
+  skyGrad.addColorStop(0.82, '#f07020');
+  skyGrad.addColorStop(0.92, '#f8a030');
+  skyGrad.addColorStop(1.0,  '#ffc060');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, top, W, gameH);
+
+  const horizGlow = ctx.createLinearGradient(0, H - gameH * 0.35, 0, H);
+  horizGlow.addColorStop(0, 'rgba(255,160,40,0)');
+  horizGlow.addColorStop(1, 'rgba(255,180,60,0.3)');
+  ctx.fillStyle = horizGlow;
+  ctx.fillRect(0, top, W, gameH);
+
+  const sunX = W * 0.75;
+  const sunY = H - gameH * 0.12;
+  const sunR  = Math.min(W, gameH) * 0.11;
+
+  const bigHalo = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR * 5);
+  bigHalo.addColorStop(0,   'rgba(255,200,80,0.5)');
+  bigHalo.addColorStop(0.3, 'rgba(255,120,20,0.25)');
+  bigHalo.addColorStop(0.7, 'rgba(200,60,10,0.1)');
+  bigHalo.addColorStop(1,   'rgba(150,20,5,0)');
+  ctx.fillStyle = bigHalo;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR * 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  const sunGrad = ctx.createRadialGradient(sunX, sunY - sunR*0.1, 0, sunX, sunY, sunR);
+  sunGrad.addColorStop(0,   '#fff0c0');
+  sunGrad.addColorStop(0.3, '#ffcc44');
+  sunGrad.addColorStop(0.7, '#ff8820');
+  sunGrad.addColorStop(1,   '#ff5500');
+  ctx.fillStyle = sunGrad;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, top, W, H - top);
+  ctx.clip();
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  const reflGrad = ctx.createLinearGradient(sunX - sunR*0.5, sunY, sunX + sunR*0.5, sunY);
+  reflGrad.addColorStop(0, 'rgba(255,150,50,0)');
+  reflGrad.addColorStop(0.5, 'rgba(255,180,60,0.35)');
+  reflGrad.addColorStop(1, 'rgba(255,150,50,0)');
+  ctx.fillStyle = reflGrad;
+  ctx.fillRect(sunX - sunR*0.5, sunY, sunR, H - sunY);
+
+  const groundY = H - gameH * 0.07;
+  const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
+  groundGrad.addColorStop(0, '#2a1205');
+  groundGrad.addColorStop(1, '#120800');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, groundY, W, H - groundY);
+
+  const buildScroll = (state.scrollX * 0.15) % (W * 1.5);
+  const builds = [
+    {x: 0.05, w: 0.04, h: 0.14}, {x: 0.12, w: 0.02, h: 0.09},
+    {x: 0.18, w: 0.05, h: 0.18}, {x: 0.27, w: 0.03, h: 0.12},
+    {x: 0.35, w: 0.06, h: 0.16}, {x: 0.44, w: 0.03, h: 0.10},
+    {x: 0.52, w: 0.05, h: 0.20}, {x: 0.61, w: 0.04, h: 0.13},
+    {x: 0.70, w: 0.03, h: 0.11}, {x: 0.78, w: 0.06, h: 0.17},
+    {x: 0.87, w: 0.04, h: 0.14}, {x: 0.95, w: 0.03, h: 0.09},
+  ];
+  builds.forEach(b => {
+    const bx = ((b.x * W - buildScroll * 0.5) % W + W) % W;
+    ctx.fillStyle = '#120808';
+    ctx.fillRect(bx, groundY - b.h * gameH, b.w * W, b.h * gameH + (H - groundY));
+  });
+}
+
+function drawSkyPhase2(W, H) {
+  const top = CONFIG.hudHeight;
+  const gameH = H - top;
+
+  const skyGrad = ctx.createLinearGradient(0, top, 0, H);
+  skyGrad.addColorStop(0.0, '#010208');
+  skyGrad.addColorStop(0.2, '#02061a');
+  skyGrad.addColorStop(0.5, '#050b2a');
+  skyGrad.addColorStop(0.75,'#0a1540');
+  skyGrad.addColorStop(0.9, '#0f1e4a');
+  skyGrad.addColorStop(1.0, '#152050');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, top, W, gameH);
+
+  ctx.save();
+  const milkyGrad = ctx.createLinearGradient(0, top, W, H);
+  milkyGrad.addColorStop(0,   'rgba(80,100,180,0)');
+  milkyGrad.addColorStop(0.2, 'rgba(80,100,180,0.06)');
+  milkyGrad.addColorStop(0.5, 'rgba(100,120,200,0.1)');
+  milkyGrad.addColorStop(0.8, 'rgba(80,100,180,0.06)');
+  milkyGrad.addColorStop(1,   'rgba(80,100,180,0)');
+  ctx.fillStyle = milkyGrad;
+  ctx.fillRect(0, top, W, gameH);
+  ctx.restore();
+
+  if (!state._stars) {
+    state._stars = Array.from({length: 150}, () => ({
+      x: Math.random(), y: Math.random() * 0.75,
+      r: Math.random() * 1.8 + 0.3,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: 0.01 + Math.random() * 0.04,
+      hue: Math.random() < 0.15 ? (Math.random() < 0.5 ? 'rgba(180,200,255,' : 'rgba(255,220,180,') : 'rgba(255,255,255,',
+    }));
+  }
+  state._stars.forEach(s => {
+    const alpha = 0.3 + 0.7 * ((Math.sin(state.scrollX * s.speed + s.twinkle) + 1) / 2);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (s.r > 1.3) {
+      const sg = ctx.createRadialGradient(s.x * W, top + s.y * gameH, 0, s.x * W, top + s.y * gameH, s.r * 3);
+      sg.addColorStop(0, s.hue + '0.5)');
+      sg.addColorStop(1, s.hue + '0)');
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.arc(s.x * W, top + s.y * gameH, s.r * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = s.hue + '1)';
+    ctx.beginPath();
+    ctx.arc(s.x * W, top + s.y * gameH, s.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  const moonX = W * 0.18;
+  const moonY = top + gameH * 0.22;
+  const moonR  = Math.min(W, gameH) * 0.058;
+
+  const moonHalo = ctx.createRadialGradient(moonX, moonY, moonR * 0.8, moonX, moonY, moonR * 3.5);
+  moonHalo.addColorStop(0,   'rgba(180,210,255,0.18)');
+  moonHalo.addColorStop(0.5, 'rgba(140,180,240,0.07)');
+  moonHalo.addColorStop(1,   'rgba(100,150,220,0)');
+  ctx.fillStyle = moonHalo;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonR * 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  const moonGrad = ctx.createRadialGradient(
+    moonX - moonR * 0.25, moonY - moonR * 0.25, moonR * 0.05,
+    moonX, moonY, moonR
+  );
+  moonGrad.addColorStop(0,   '#f0f4ff');
+  moonGrad.addColorStop(0.4, '#d8e4f8');
+  moonGrad.addColorStop(0.75, '#c0d0f0');
+  moonGrad.addColorStop(1,   '#9ab0e0');
+  ctx.fillStyle = moonGrad;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+  ctx.fill();
+
+  const craters = [
+    {ox: 0.2, oy: 0.15, r: 0.18}, {ox: -0.3, oy: 0.35, r: 0.12},
+    {ox: 0.0, oy: -0.3, r: 0.15}, {ox: -0.15, oy: -0.1, r: 0.09},
+    {ox: 0.35, oy: -0.2, r: 0.1},
+  ];
+  craters.forEach(c => {
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#7090c0';
+    ctx.beginPath();
+    ctx.arc(moonX + c.ox * moonR, moonY + c.oy * moonR, c.r * moonR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  const atmGlow = ctx.createRadialGradient(W * 0.5, H, 0, W * 0.5, H, H * 0.7);
+  atmGlow.addColorStop(0,   'rgba(10,30,80,0.4)');
+  atmGlow.addColorStop(0.5, 'rgba(5,15,50,0.15)');
+  atmGlow.addColorStop(1,   'rgba(0,5,20,0)');
+  ctx.fillStyle = atmGlow;
+  ctx.fillRect(0, top, W, gameH);
+
+  const groundY = H - gameH * 0.07;
+  const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
+  groundGrad.addColorStop(0, '#0a1428');
+  groundGrad.addColorStop(0.3, '#060e1e');
+  groundGrad.addColorStop(1, '#020508');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, groundY, W, H - groundY);
+
+  const cityScrollOffset = (state.scrollX * 0.1) % (W * 2);
+  const buildings = [
+    {x:0.0, w:0.06, h:0.30}, {x:0.08, w:0.04, h:0.22}, {x:0.14, w:0.07, h:0.38},
+    {x:0.23, w:0.05, h:0.25}, {x:0.30, w:0.03, h:0.18}, {x:0.35, w:0.08, h:0.45},
+    {x:0.45, w:0.04, h:0.28}, {x:0.51, w:0.06, h:0.33}, {x:0.59, w:0.05, h:0.22},
+    {x:0.66, w:0.04, h:0.35}, {x:0.72, w:0.07, h:0.28}, {x:0.81, w:0.05, h:0.42},
+    {x:0.88, w:0.04, h:0.24}, {x:0.94, w:0.06, h:0.32},
+  ];
+  buildings.forEach(b => {
+    const bx = ((b.x * W - cityScrollOffset * 0.4) % W + W) % W;
+    const bh = b.h * gameH;
+    const by = groundY - bh;
+    ctx.fillStyle = '#03070f';
+    ctx.fillRect(bx, by, b.w * W, bh + (H - groundY));
+    const wCols = Math.floor(b.w * W / 10);
+    const wRows = Math.floor(bh / 12);
+    for (let r = 1; r < wRows; r++) {
+      for (let c = 0; c < wCols; c++) {
+        const lit = Math.sin(b.x * 100 + r * 13 + c * 7 + state.scrollX * 0.005) > 0.2;
+        if (lit) {
+          ctx.fillStyle = Math.random() < 0.3 ? 'rgba(255,240,140,0.85)' : 'rgba(200,230,255,0.7)';
+          ctx.fillRect(bx + c * 10 + 2, by + r * 12, 6, 7);
+        }
+      }
+    }
+  });
+}
+
 function draw() {
   const W = canvas.width, H = canvas.height;
   const phaseConf = CONFIG.phases[state.phase];
   ctx.clearRect(0, 0, W, H);
 
-  // Céu
-  const skyImg = IMAGES[phaseConf.skyImg];
-  if (skyImg && skyImg.complete && skyImg.naturalWidth > 0) {
-    const scale   = (H - CONFIG.hudHeight) / skyImg.naturalHeight;
-    const scaledW = skyImg.naturalWidth * scale;
-    const offsetX = -(state.scrollX * 0.3) % scaledW;
-    for (let tx = offsetX; tx < W + scaledW; tx += scaledW)
-      ctx.drawImage(skyImg, tx, CONFIG.hudHeight, scaledW, H - CONFIG.hudHeight);
-  } else {
-    const sky = ctx.createLinearGradient(0, CONFIG.hudHeight, 0, H);
-    if (state.phase === 0) { sky.addColorStop(0,'#0a1628'); sky.addColorStop(1,'#1a3a6b'); }
-    else if (state.phase === 1) { sky.addColorStop(0,'#1a0530'); sky.addColorStop(1,'#ff6b00'); }
-    else { sky.addColorStop(0,'#050308'); sky.addColorStop(1,'#15183f'); }
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, CONFIG.hudHeight, W, H - CONFIG.hudHeight);
-  }
+  // Céu procedural por fase
+  if (state.phase === 0)      drawSkyPhase0(W, H);
+  else if (state.phase === 1) drawSkyPhase1(W, H);
+  else                        drawSkyPhase2(W, H);
 
   state.clouds.forEach(c => drawCloud(c, phaseConf.cloudColor, phaseConf.cloudAlpha));
   state.birds.forEach(b  => drawBird(b, phaseConf.birdTint));
@@ -591,12 +881,18 @@ function drawBird(b, tint) {
     ctx.save();
     const flap = Math.sin(state.birdFlap + b.flapOffset) * 0.12 + 1;
     ctx.translate(b.x, b.y); ctx.scale(1, flap);
-    ctx.drawImage(IMAGES.passaro, -bw/2, -bh/2, bw, bh);
     if (tint) {
-      ctx.fillStyle = tint;
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillRect(-bw/2, -bh/2, bw, bh);
-      ctx.globalCompositeOperation = 'source-over';
+      // Offscreen canvas para aplicar tint SEM caixa quadrada
+      const oc = document.createElement('canvas');
+      oc.width = bw; oc.height = bh;
+      const ox = oc.getContext('2d');
+      ox.drawImage(IMAGES.passaro, 0, 0, bw, bh);
+      ox.fillStyle = tint;
+      ox.globalCompositeOperation = 'source-atop';
+      ox.fillRect(0, 0, bw, bh);
+      ctx.drawImage(oc, -bw/2, -bh/2);
+    } else {
+      ctx.drawImage(IMAGES.passaro, -bw/2, -bh/2, bw, bh);
     }
     ctx.restore();
     return;
