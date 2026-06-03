@@ -643,6 +643,8 @@
 
   body.font-small .btn-primary,
   body.font-small .btn-secondary { font-size: 10px; padding: 10px 24px; width: 200px; }
+  /* Botão fechar do modal de acessibilidade não deve mudar de tamanho com a fonte */
+  body.font-small .btn-close-a11y { font-size: 11px !important; padding: 12px 32px !important; width: 100% !important; }
 
   body.font-small h1 { font-size: clamp(28px, 5.5vw, 48px); }
   body.font-small .plane-logo { font-size: 36px; }
@@ -678,6 +680,8 @@
 
   body.font-large .btn-primary,
   body.font-large .btn-secondary { font-size: 14px; padding: 15px 40px; width: 260px; }
+  /* Botão fechar não muda de tamanho com a fonte */
+  body.font-large .btn-close-a11y { font-size: 12px !important; padding: 12px 32px !important; width: 100% !important; }
 
   body.font-large h1 { font-size: clamp(44px, 8.5vw, 72px); }
   body.font-large .plane-logo { font-size: 60px; }
@@ -1218,19 +1222,22 @@
   }
   .theme-opt-btn {
     flex: 1;
-    min-width: 80px;
-    padding: 10px 6px;
+    min-width: 0;
+    padding: 10px 4px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 10px;
     color: var(--text);
     cursor: pointer;
     font-family: 'Exo 2', sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.2px;
     transition: all 0.18s;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
+    text-align: center;
+    line-height: 1.3;
   }
   .theme-opt-btn:hover:not(.active) {
     border-color: var(--accent);
