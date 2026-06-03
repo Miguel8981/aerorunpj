@@ -397,7 +397,7 @@ function update() {
   // ── Colisões
   const planeX        = 120;
   const birdFuelLoss  = state.phase === 2 ? 15 : state.phase === 1 ? 12 : 10;
-  const birdScoreLoss = state.phase === 2 ? 3 : 2;
+  const birdScoreLoss = 3; // -3 pts por pássaro em todas as fases
 
   state.birds.forEach((b, i) => {
     if (collides(planeX, state.planeY, CONFIG.planeWidth * 0.7, CONFIG.planeHeight * 0.6,
@@ -1004,8 +1004,24 @@ function showQuestion() {
   }
   if (!pool.length) { state.questionPending = false; return; }
 
-  state.currentQuestion = pool[Math.floor(Math.random() * pool.length)];
-  state.usedQuestions.push(state.currentQuestion.text);
+  // Escolhe pergunta aleatória do pool
+  const rawQ = pool[Math.floor(Math.random() * pool.length)];
+  state.usedQuestions.push(rawQ.text);
+
+  // Embaralha as opções mantendo o índice correto atualizado
+  const indexed = rawQ.options.map((opt, i) => ({ opt, isCorrect: i === rawQ.correct }));
+  for (let i = indexed.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+  }
+  const newCorrectIdx = indexed.findIndex(o => o.isCorrect);
+
+  state.currentQuestion = {
+    text: rawQ.text,
+    options: indexed.map(o => o.opt),
+    correct: newCorrectIdx,
+    explanation: rawQ.explanation,
+  };
 
   questionText.textContent = state.currentQuestion.text;
   questionOpts.innerHTML   = '';
@@ -1048,9 +1064,10 @@ function answerQuestion(idx, btn) {
 
   const phaseConf = CONFIG.phases[state.phase];
   const fuelGain  = CONFIG.fuelGain.correct + phaseConf.fuelGainBonus;
-  const wrongLoss = state.phase === 2 ? 12 : CONFIG.fuelLoss.wrong;
-  const scoreGain = state.phase === 2 ? 8 : 6;
-  const scoreLoss = state.phase === 2 ? 5 : 3;
+  const wrongLoss = CONFIG.fuelLoss.wrong;
+  // Sistema calibrado: 9 acertos × 10 pts + 10 vitória = 100 pontos perfeitos
+  const scoreGain = 10;   // fixo por acerto
+  const scoreLoss = 5;    // fixo por erro
 
   if (correct) {
     questionFeedback.classList.add('success');
