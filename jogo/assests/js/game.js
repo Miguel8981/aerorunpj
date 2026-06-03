@@ -16,7 +16,7 @@ const CONFIG = {
       timeLimit:     60,       // segundos para completar a fase
       correctNeeded: 3,        // acertos necessários para avançar
       skyImg:       'ceu_dia',
-      cloudColor:   '#b0d8ff', cloudAlpha: 0.10,
+      cloudColor:   '#d8eeff', cloudAlpha: 0.55,
       accentColor:  '#00d4ff', hudBorder: 'rgba(0,212,255,0.2)',
       exhaustColor: '#00d4ff', groundColor: '#1a3a2a', birdTint: null,
     },
@@ -33,7 +33,7 @@ const CONFIG = {
       timeLimit:     60,
       correctNeeded: 3,
       skyImg:       'ceu_por_do_sol',
-      cloudColor:   '#ffb07a', cloudAlpha: 0.18,
+      cloudColor:   '#ffcca0', cloudAlpha: 0.45,
       accentColor:  '#ff8c42', hudBorder: 'rgba(255,140,66,0.3)',
       exhaustColor: '#ff6b00', groundColor: '#3a2010', birdTint: 'rgba(255,120,60,0.35)',
     },
@@ -50,7 +50,7 @@ const CONFIG = {
       timeLimit:     60,
       correctNeeded: 3,
       skyImg:       'ceu_noite',
-      cloudColor:   '#1e2d6e', cloudAlpha: 0.22,
+      cloudColor:   '#1e3a7e', cloudAlpha: 0.5,
       accentColor:  '#a78bfa', hudBorder: 'rgba(167,139,250,0.3)',
       exhaustColor: '#c4b5fd', groundColor: '#0a0f1a', birdTint: 'rgba(80,60,140,0.3)',
     },
@@ -289,8 +289,11 @@ function spawnInitialClouds() {
     state.clouds.push(createCloud(Math.random() * canvas.width));
 }
 function createCloud(x) {
+  const gameH = canvas.height - CONFIG.hudHeight;
+  // Nuvens ficam apenas nos 60% superiores do céu (longe do chão)
+  const maxY = CONFIG.hudHeight + gameH * 0.60;
   return {
-    x, y: CONFIG.hudHeight + 20 + Math.random() * (canvas.height - CONFIG.hudHeight - 80),
+    x, y: CONFIG.hudHeight + 30 + Math.random() * (maxY - CONFIG.hudHeight - 30),
     w: 80 + Math.random() * 120, h: 30 + Math.random() * 40,
     speed: 0.5 + Math.random() * 1,
     alpha: 0.08 + Math.random() * 0.12,
@@ -864,13 +867,41 @@ function drawProgressDots(W, H, phaseConf) {
 // ─── DRAW CLOUD ────────────────────────────────────────────────────────────
 function drawCloud(c, color, baseAlpha) {
   ctx.save();
-  ctx.globalAlpha = c.alpha * (baseAlpha / 0.10);
+  const alpha = c.alpha * (baseAlpha / 0.10);
+
+  const blobs = [
+    { ox: 0.5,  oy: 0.0,  rx: 0.48, ry: 0.42 },
+    { ox: 0.28, oy: 0.12, rx: 0.34, ry: 0.36 },
+    { ox: 0.72, oy: 0.1,  rx: 0.3,  ry: 0.32 },
+    { ox: 0.15, oy: 0.22, rx: 0.22, ry: 0.26 },
+    { ox: 0.85, oy: 0.2,  rx: 0.20, ry: 0.24 },
+  ];
+
+  // Sombra suave abaixo
+  ctx.globalAlpha = alpha * 0.18;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  blobs.forEach(b => {
+    ctx.beginPath();
+    ctx.ellipse(c.x + b.ox * c.w, c.y + (b.oy + 0.1) * c.h, b.rx * c.w, b.ry * c.h * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Nuvem principal
+  ctx.globalAlpha = alpha * 0.85;
   ctx.fillStyle = color;
+  blobs.forEach(b => {
+    ctx.beginPath();
+    ctx.ellipse(c.x + b.ox * c.w, c.y + b.oy * c.h, b.rx * c.w, b.ry * c.h, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Destaque branco/claro no topo
+  ctx.globalAlpha = alpha * 0.22;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.beginPath();
-  ctx.ellipse(c.x + c.w * 0.5, c.y, c.w * 0.5, c.h * 0.4, 0, 0, Math.PI * 2);
-  ctx.ellipse(c.x + c.w * 0.3, c.y + c.h * 0.1, c.w * 0.35, c.h * 0.35, 0, 0, Math.PI * 2);
-  ctx.ellipse(c.x + c.w * 0.7, c.y + c.h * 0.1, c.w * 0.3, c.h * 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(c.x + c.w * 0.5, c.y - c.h * 0.08, c.w * 0.3, c.h * 0.18, 0, 0, Math.PI * 2);
   ctx.fill();
+
   ctx.restore();
 }
 
