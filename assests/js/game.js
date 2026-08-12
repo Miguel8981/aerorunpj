@@ -134,8 +134,9 @@ function showScreen(name) {
   // Botão de acessibilidade só aparece fora do jogo
   const fab = document.getElementById('btn-accessibility');
   if (fab) fab.style.display = (name === 'game') ? 'none' : '';
+  // Áudio: música do menu só toca na tela inicial; para nas demais (voo incluso)
+  if (window.AudioEngine) AudioEngine.onScreenChange(name);
 }
-
 // ─── BUTTONS ───────────────────────────────────────────────────────────────
 document.getElementById('btn-start').addEventListener('click', e => {
   e.currentTarget.blur();
