@@ -413,15 +413,14 @@ function getRandomQuestion(phase) {
 
   // retorna pergunta aleatória
   return phaseQuestions[randomIndex];
+}
 
-
-  function getShuffledQuestions(phase) {
-    return QUESTIONS
-      .filter(q => q.phase === phase)
-      .sort(() => Math.random() - 0.5); // embaralha
-  }
-  
-  // Uso: percorre o array retornado em sequência, sem repetir
+// Retorna todas as perguntas de uma fase, embaralhadas
+// (útil caso se queira percorrer a fase sem repetir perguntas)
+function getShuffledQuestions(phase) {
+  return QUESTIONS
+    .filter(q => q.phase === phase)
+    .sort(() => Math.random() - 0.5); // embaralha
 }
 
 

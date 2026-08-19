@@ -65,12 +65,6 @@ const CONFIG = {
   fuelGain:  { correct: 12 },
   fuelDrain: 0.018,
   hudHeight:  50,
-
-  // ── Velocidade do avião (aceleração/frenagem com A/D ou setas ←/→)
-  speedMin:       3.5,   // velocidade mínima permitida
-  speedMax:       13,    // velocidade máxima permitida
-  speedAccelRate: 0.12,  // ganho de velocidade por frame ao acelerar (D / →)
-  speedBrakeRate: 0.18,  // perda de velocidade por frame ao frear (A / ←)
 };
 
 // ─── IMAGES ────────────────────────────────────────────────────────────────
@@ -100,7 +94,6 @@ function createInitialState() {
   return {
     running: false, paused: false, phase: 0, score: 0, fuel: 100,
     planeY: 0, velY: 0, scrollX: 0,
-    speed: CONFIG.phases[0].speed, // velocidade atual do avião (ajustável com A/D ou ←/→)
     birds: [], qmarks: [], clouds: [], particles: [],
     questionPending: false, currentQuestion: null,
     animFrame: null, keys: {},
@@ -111,6 +104,10 @@ function createInitialState() {
     lastTick: 0,                               // timestamp do último segundo
     usedQuestions: [],                         // IDs já usados para não repetir
     _stars: null,                              // estrelas geradas na fase 3
+    // ── Navegação por teclado e fluxo manual da pergunta ──
+    qSelectedIndex: 0,                         // alternativa destacada (W/S ou ↑/↓)
+    qAnswered:      false,                     // true depois que a pergunta foi confirmada
+    qShouldAdvance: false,                     // se true, avança de fase ao fechar a pergunta
   };
 }
 
@@ -127,11 +124,12 @@ const hudPhase         = document.getElementById('hud-phase');
 const fuelBar          = document.getElementById('fuel-bar');
 const fuelText         = document.getElementById('fuel-text');
 const scoreEl          = document.getElementById('score');
-const speedEl           = document.getElementById('speed-value');
 const questionOverlay  = document.getElementById('question-overlay');
 const questionText     = document.getElementById('question-text');
 const questionOpts     = document.getElementById('question-options');
 const questionFeedback = document.getElementById('question-feedback');
+const btnQuestionClose    = document.getElementById('btn-question-close');
+const btnQuestionContinue = document.getElementById('btn-question-continue');
 const pauseOverlay     = document.getElementById('pause-overlay');
 const hud              = document.getElementById('hud');
 
@@ -157,12 +155,16 @@ document.getElementById('btn-resume').addEventListener('click', togglePause);
 document.getElementById('btn-quit').addEventListener('click', () => { cancelAnimationFrame(state.animFrame); showScreen('start'); });
 document.getElementById('btn-restart').addEventListener('click', startGame);
 document.getElementById('btn-menu').addEventListener('click', () => showScreen('start'));
+btnQuestionContinue.addEventListener('click', closeQuestion);
+btnQuestionClose.addEventListener('click', closeQuestion);
 
 // ─── KEYBOARD ──────────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   state.keys[e.code] = true;
   if (e.code === 'Escape' && state.running) togglePause();
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyS','KeyA','KeyD','Space'].includes(e.code)) e.preventDefault();
+  if (['ArrowUp','ArrowDown','KeyW','KeyS','Space'].includes(e.code)) e.preventDefault();
+  // Navegação por teclado nas alternativas da pergunta (W/S, ↑/↓, Enter)
+  if (state.questionPending) handleQuestionKeydown(e);
 });
 document.addEventListener('keyup', e => { state.keys[e.code] = false; });
 
@@ -180,7 +182,6 @@ function startGame() {
   applyPhaseTheme(0);
   showPhaseBanner(CONFIG.phases[0].name, CONFIG.phases[0].description);
   updatePhaseHUD();
-  if (speedEl) speedEl.textContent = state.speed.toFixed(1);
   loop();
 }
 
@@ -336,7 +337,7 @@ function update() {
     const needed = phaseConf.correctNeeded;
     const got    = state.phaseCorrect;
     endGame(false,
-      `Tempo esgotado na Fase ${state.phase + 1}! Você acertou ${got} de ${needed} perguntas necessárias.`
+      `Faltou pouco! Você acertou ${got} de ${needed} perguntas na Fase ${state.phase + 1}. Reabasteça e decole de novo!`
     );
     return;
   }
@@ -347,7 +348,7 @@ function update() {
                   : CONFIG.fuelDrain;
   state.fuel = Math.max(0, state.fuel - drainRate);
   if (state.fuel <= 0) {
-    endGame(false, 'Sem combustível! O avião pousou antes de completar a fase.');
+    endGame(false, 'O combustível acabou antes da hora! Você chegou longe — hora de reabastecer e tentar de novo.');
     return;
   }
 
@@ -364,15 +365,7 @@ function update() {
     Math.min(gameH - CONFIG.planeHeight / 2 - 10, state.planeY + state.velY)
   );
 
-  // ── Aceleração / Frenagem (A/D ou setas ←/→), respeitando limites min/max
-  const accelKey = state.keys['KeyD'] || state.keys['ArrowRight'];
-  const brakeKey = state.keys['KeyA'] || state.keys['ArrowLeft'];
-  if (accelKey) state.speed += CONFIG.speedAccelRate;
-  if (brakeKey) state.speed -= CONFIG.speedBrakeRate;
-  state.speed = Math.max(CONFIG.speedMin, Math.min(CONFIG.speedMax, state.speed));
-  if (speedEl) speedEl.textContent = state.speed.toFixed(1);
-
-  state.scrollX += state.speed;
+  state.scrollX += phaseConf.speed;
 
   // ── Nuvens
   state.clouds.forEach(c => c.x -= c.speed);
@@ -386,7 +379,7 @@ function update() {
       state.birds.push({
         x: canvas.width + 20 + i * 65,
         y: CONFIG.hudHeight + 40 + Math.random() * (gameH - CONFIG.hudHeight - 100),
-        speed: state.speed + 0.5 + Math.random() * phaseConf.birdSpeedVar,
+        speed: phaseConf.speed + 0.5 + Math.random() * phaseConf.birdSpeedVar,
         flapOffset: Math.random() * Math.PI * 2,
       });
     }
@@ -397,7 +390,7 @@ function update() {
     state.qmarks.push({
       x: canvas.width + 20,
       y: CONFIG.hudHeight + 60 + Math.random() * (gameH - CONFIG.hudHeight - 120),
-      speed: state.speed * 0.75,
+      speed: phaseConf.speed * 0.75,
       pulse: 0,
     });
   }
@@ -415,7 +408,7 @@ function update() {
   // ── Colisões
   const planeX        = 120;
   const birdFuelLoss  = state.phase === 2 ? 15 : state.phase === 1 ? 12 : 10;
-  const birdScoreLoss = 3; // -3 pts por pássaro em todas as fases
+  const birdScoreLoss = 5; // -5 pts por pássaro em todas as fases
 
   state.birds.forEach((b, i) => {
     if (collides(planeX, state.planeY, CONFIG.planeWidth * 0.7, CONFIG.planeHeight * 0.6,
@@ -1011,6 +1004,10 @@ function spawnParticles(x, y, color) {
 // ─── QUESTIONS ─────────────────────────────────────────────────────────────
 function showQuestion() {
   state.questionPending = true;
+  state.qAnswered       = false;
+  state.qShouldAdvance  = false;
+  state.qSelectedIndex  = 0;
+  hideQuestionActions();
   const phaseId = state.phase + 1;
 
   // Filtra perguntas da fase atual que ainda não foram usadas
@@ -1054,6 +1051,9 @@ function showQuestion() {
   });
   questionOverlay.classList.remove('hidden');
 
+  // Uma alternativa já começa destacada, permitindo responder só com o teclado
+  updateOptionSelection();
+
   // Estilo da caixa por fase
   const qbox    = document.querySelector('.question-box');
   const qheader = document.querySelector('.question-header');
@@ -1069,11 +1069,17 @@ function showQuestion() {
 }
 
 function answerQuestion(idx, btn) {
+  // Impede responder a mesma pergunta duas vezes (proteção extra além do
+  // atributo "disabled" dos botões, que já bloqueia cliques do mouse)
+  if (state.qAnswered) return;
+  state.qAnswered = true;
+
   const q       = state.currentQuestion;
   const correct = idx === q.correct;
 
   questionOpts.querySelectorAll('.option-btn').forEach((b, i) => {
     b.disabled = true;
+    b.classList.remove('selected');
     if (i === q.correct) b.classList.add('correct');
   });
   if (!correct) btn.classList.add('wrong');
@@ -1087,6 +1093,8 @@ function answerQuestion(idx, btn) {
   const scoreGain = 10;   // fixo por acerto
   const scoreLoss = 5;    // fixo por erro
 
+  state.qShouldAdvance = false;
+
   if (correct) {
     questionFeedback.classList.add('success');
     questionFeedback.classList.remove('fail');
@@ -1099,31 +1107,77 @@ function answerQuestion(idx, btn) {
     state.phaseCorrect++;
     updatePhaseHUD();
 
-    // Verifica se completou os acertos necessários
+    // Se completou os acertos necessários, a fase avança quando o
+    // jogador fechar a pergunta (Continuar / X), não automaticamente
     if (state.phaseCorrect >= phaseConf.correctNeeded) {
-      // Fecha a pergunta e avança de fase após feedback
-      setTimeout(() => {
-        questionOverlay.classList.add('hidden');
-        state.questionPending = false;
-        advancePhase();
-      }, 2200);
-      updateHUD();
-      return;
+      state.qShouldAdvance = true;
     }
   } else {
     questionFeedback.classList.add('fail');
     questionFeedback.classList.remove('success');
-    questionFeedback.textContent = `❌ Errado! ${q.explanation}`;
+    questionFeedback.textContent = `❌ Errado! A alternativa correta era: "${q.options[q.correct]}". ${q.explanation}`;
     state.score = Math.max(0, state.score - scoreLoss);
     state.fuel  = Math.max(0, state.fuel - wrongLoss);
     showScorePopup(canvas.width/2, canvas.height/2, `-${scoreLoss}`);
   }
 
   updateHUD();
-  setTimeout(() => {
-    questionOverlay.classList.add('hidden');
-    state.questionPending = false;
-  }, 2800);
+
+  // A pergunta permanece aberta — o jogador decide quando continuar
+  showQuestionActions();
+}
+
+// Fecha a pergunta manualmente (botão "Continuar" ou "X" / Enter após responder)
+function closeQuestion() {
+  if (!state.qAnswered) return; // só pode fechar depois de responder
+  questionOverlay.classList.add('hidden');
+  hideQuestionActions();
+  state.questionPending = false;
+
+  const shouldAdvance = state.qShouldAdvance;
+  state.qShouldAdvance = false;
+  if (shouldAdvance) advancePhase();
+}
+
+function showQuestionActions() {
+  btnQuestionContinue.classList.remove('hidden');
+  btnQuestionClose.classList.remove('hidden');
+}
+function hideQuestionActions() {
+  btnQuestionContinue.classList.add('hidden');
+  btnQuestionClose.classList.add('hidden');
+}
+
+// ─── NAVEGAÇÃO DAS ALTERNATIVAS POR TECLADO (W/S, ↑/↓, Enter) ─────────────
+function updateOptionSelection() {
+  const buttons = questionOpts.querySelectorAll('.option-btn');
+  buttons.forEach((b, i) => b.classList.toggle('selected', i === state.qSelectedIndex));
+}
+
+function handleQuestionKeydown(e) {
+  const buttons = questionOpts.querySelectorAll('.option-btn');
+  if (!buttons.length) return;
+
+  if (!state.qAnswered) {
+    // Pergunta ainda não respondida: navega e confirma
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') {
+      state.qSelectedIndex = Math.max(0, state.qSelectedIndex - 1);
+      updateOptionSelection();
+    } else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
+      state.qSelectedIndex = Math.min(buttons.length - 1, state.qSelectedIndex + 1);
+      updateOptionSelection();
+    } else if (e.code === 'Enter') {
+      e.preventDefault();
+      const btn = buttons[state.qSelectedIndex];
+      if (btn && !btn.disabled) answerQuestion(state.qSelectedIndex, btn);
+    }
+  } else {
+    // Pergunta já respondida: Enter funciona como o botão "Continuar"
+    if (e.code === 'Enter') {
+      e.preventDefault();
+      closeQuestion();
+    }
+  }
 }
 
 // ─── SCORE POPUP ───────────────────────────────────────────────────────────
@@ -1161,12 +1215,24 @@ function togglePause() {
   pauseOverlay.classList.toggle('hidden', !state.paused);
 }
 
+// ─── MENSAGENS DE DERROTA (amigáveis e motivadoras) ────────────────────────
+const LOSE_TITLES = [
+  'Quase lá!',
+  'Foi por pouco!',
+  'Boa tentativa!',
+  'Não desista!',
+  'Você quase conseguiu!',
+];
+function pickLoseTitle() {
+  return LOSE_TITLES[Math.floor(Math.random() * LOSE_TITLES.length)];
+}
+
 // ─── END GAME ──────────────────────────────────────────────────────────────
 function endGame(won, message) {
   state.running = false;
   cancelAnimationFrame(state.animFrame);
-  document.getElementById('gameover-icon').textContent  = won ? '🛬' : '💥';
-  document.getElementById('gameover-title').textContent = won ? 'Pouso Perfeito!' : 'Fim de Voo!';
+  document.getElementById('gameover-icon').textContent  = won ? '🛬' : '🔄';
+  document.getElementById('gameover-title').textContent = won ? 'Pouso Perfeito!' : pickLoseTitle();
   document.getElementById('gameover-msg').textContent   = message;
   document.getElementById('final-score').textContent    = state.score;
   const medal = state.score >= 80 ? '🥇 Medalha de Ouro!'
@@ -1182,10 +1248,10 @@ function endGame(won, message) {
     : state.score >= 70
     ? '👍 Bom Desempenho! O aluno apresentou boa compreensão, com pequenas lacunas a revisar.'
     : state.score >= 50
-    ? '📚 Desempenho Regular. O aluno precisa revisar alguns conceitos para consolidar o aprendizado.'
+    ? '📚 Bom começo! Revisando mais alguns conceitos, você consolida o que já aprendeu e vai ainda mais longe.'
     : state.score >= 30
     ? '⚠️ Atenção! O aluno apresentou dificuldades e precisa de reforço nos conteúdos estudados.'
-    : '🔁 Recuperação Necessária. O aluno não atingiu o nível mínimo e precisa de acompanhamento pedagógico.';
+    : '🔁 Vamos tentar novamente! Você ainda não atingiu a pontuação mínima desta vez, mas com mais uma tentativa dá pra chegar lá — continue praticando!';
   document.getElementById('skill-message').textContent = skillMsg;
 
   showScreen('gameover');

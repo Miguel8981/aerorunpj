@@ -260,6 +260,40 @@
   .medal.bronze { background: rgba(205,127,50,0.2); border: 1px solid var(--bronze); color: var(--bronze); }
   .medal.silver { background: rgba(192,192,192,0.15); border: 1px solid var(--silver); color: var(--silver); }
   .medal.gold   { background: rgba(255,215,0,0.15); border: 1px solid var(--gold); color: var(--gold); }
+
+  /* ===========================
+     TELA DE INSTRUÇÕES — cabe 100% na tela, com rolagem interna
+     quando o conteúdo (ou a fonte grande) não couber na viewport.
+     =========================== */
+  #screen-instructions .modal-box {
+    gap: 14px;
+    padding: 32px 36px 28px;
+    max-height: min(620px, 88vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #screen-instructions .modal-box ul { gap: 8px; }
+  #screen-instructions .modal-box ul li { padding: 9px 12px; }
+  #screen-instructions .modal-box h3 { margin-top: 2px; }
+
+  /* Barra de rolagem discreta, no estilo do jogo */
+  #screen-instructions .modal-box::-webkit-scrollbar { width: 8px; }
+  #screen-instructions .modal-box::-webkit-scrollbar-track { background: transparent; }
+  #screen-instructions .modal-box::-webkit-scrollbar-thumb {
+    background: rgba(0,212,255,0.35);
+    border-radius: 4px;
+  }
+  #screen-instructions .modal-box::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.55); }
+
+  /* Telas baixas (ex.: celular em paisagem) — reduz espaçamentos antes de precisar rolar */
+  @media (max-height: 640px) {
+    #screen-instructions .modal-box {
+      max-height: 94vh;
+      padding: 22px 24px 20px;
+      gap: 10px;
+    }
+    #screen-instructions .modal-box ul li { padding: 7px 10px; }
+  }
   
   /* ===========================
      GAME SCREEN
@@ -306,14 +340,7 @@
     min-width: 80px;
     transition: color 1s ease;
   }
-  .hud-right {
-    text-align: right;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 14px;
-  }
+  .hud-right { text-align: right; font-size: 15px; }
   
   .hud-center {
     flex: 1;
@@ -401,6 +428,7 @@
   }
   
   .question-box {
+    position: relative;
     background: var(--modal-bg);
     border: 1px solid rgba(0,212,255,0.3);
     border-radius: 16px;
@@ -412,6 +440,39 @@
     flex-direction: column;
     gap: 12px;
   }
+
+  /* Botão "X" para fechar a pergunta manualmente (aparece após responder) */
+  .question-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .question-close-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(255,61,61,0.12);
+  }
+  .question-close-btn.hidden { display: none; }
+
+  /* Botão "CONTINUAR" — fecha a pergunta após o jogador ver o resultado */
+  .question-continue-btn {
+    align-self: center;
+    margin-top: 4px;
+  }
+  .question-continue-btn.hidden { display: none; }
   
   .question-header {
     font-family: 'Orbitron', monospace;
@@ -450,6 +511,12 @@
   .option-btn:hover:not(:disabled) {
     border-color: var(--accent);
     background: rgba(0,212,255,0.1);
+  }
+  /* Alternativa selecionada via teclado (W/S ou ↑/↓) */
+  .option-btn.selected:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.14);
+    box-shadow: 0 0 0 2px rgba(0,212,255,0.3) inset;
   }
   .option-btn.correct {
     background: rgba(0,230,118,0.2);
@@ -490,9 +557,11 @@
   
   /* ===========================
      GAME OVER SCREEN
+     Tamanhos em clamp() para encolher em telas/janelas baixas
+     antes de precisar de rolagem — a rolagem é só um resguardo.
      =========================== */
   #gameover-icon {
-    font-size: 40px;
+    font-size: clamp(26px, 6vh, 40px);
     animation: bounceIn 0.5s;
     line-height: 1;
   }
@@ -505,13 +574,13 @@
   
   #gameover-title {
     font-family: 'Orbitron', monospace;
-    font-size: 20px;
+    font-size: clamp(16px, 3.4vh, 20px);
     color: var(--accent);
   }
   
   #gameover-msg {
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: clamp(11px, 2.2vh, 13px);
     line-height: 1.4;
   }
   
@@ -520,7 +589,7 @@
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 12px 24px;
+    padding: clamp(8px, 1.8vh, 12px) clamp(14px, 3vw, 24px);
     background: rgba(0,212,255,0.06);
     border: 1px solid rgba(0,212,255,0.2);
     border-radius: 12px;
@@ -536,35 +605,53 @@
   
   #final-score {
     font-family: 'Orbitron', monospace;
-    font-size: 38px;
+    font-size: clamp(26px, 6vh, 38px);
     font-weight: 900;
     color: var(--accent);
     line-height: 1.1;
   }
   
   #final-medal {
-    font-size: 26px;
+    font-size: clamp(18px, 4vh, 26px);
     line-height: 1.2;
   }
   
   #skill-message {
     margin-top: 4px;
-    padding: 10px 14px;
+    padding: clamp(7px, 1.4vh, 10px) 14px;
     border-radius: 10px;
     background: rgba(255,255,255,0.07);
     border: 1px solid rgba(255,255,255,0.15);
-    font-size: 13px;
+    font-size: clamp(11px, 2.2vh, 13px);
     line-height: 1.4;
     color: #c8e6ff;
     text-align: center;
     font-style: italic;
   }
   
-  /* Gameover usa modal-box menor que instruções */
+  /* Gameover usa modal-box menor que instruções, com padding/gap responsivos
+     e um teto de altura + rolagem interna apenas como resguardo final,
+     para nenhum elemento (ícone no topo, botão MENU embaixo) ficar cortado. */
   #screen-gameover .modal-box {
-    padding: 28px 36px;
-    gap: 12px;
+    padding: clamp(16px, 3.2vh, 28px) clamp(20px, 4vw, 36px);
+    gap: clamp(6px, 1.4vh, 12px);
     max-width: 440px;
+    max-height: min(680px, 94vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #screen-gameover .modal-box::-webkit-scrollbar { width: 8px; }
+  #screen-gameover .modal-box::-webkit-scrollbar-track { background: transparent; }
+  #screen-gameover .modal-box::-webkit-scrollbar-thumb {
+    background: rgba(0,212,255,0.35);
+    border-radius: 4px;
+  }
+  #screen-gameover .modal-box::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.55); }
+
+  /* Botões da tela final também respiram um pouco menos em telas baixas */
+  #screen-gameover .btn-primary,
+  #screen-gameover .btn-secondary {
+    padding: clamp(9px, 1.8vh, 15px) 32px;
   }
     
   #phase-banner {
@@ -640,9 +727,7 @@
   body.font-small .modal-box ul li,
   body.font-small .modal-box p,
   body.font-small #question-text,
-  body.font-small .option-btn,
-  body.font-small #gameover-msg,
-  body.font-small #skill-message { font-size: 11px; }
+  body.font-small .option-btn { font-size: 11px; }
 
   body.font-small .question-header,
   body.font-small #question-feedback { font-size: 10px; }
@@ -660,10 +745,15 @@
   body.font-small .option-btn { padding: 8px 12px; }
 
   body.font-small .modal-box h2 { font-size: 16px; }
-  body.font-small #gameover-title { font-size: 16px; }
-  body.font-small #final-score { font-size: 30px; }
-  body.font-small #final-medal { font-size: 20px; }
-  body.font-small #screen-gameover .modal-box { padding: 20px 24px; gap: 8px; }
+  body.font-small #gameover-title { font-size: clamp(13px, 3vh, 16px); }
+  body.font-small #gameover-msg,
+  body.font-small #skill-message { font-size: clamp(10px, 2vh, 11px); }
+  body.font-small #final-score { font-size: clamp(22px, 5vh, 30px); }
+  body.font-small #final-medal { font-size: clamp(15px, 3.6vh, 20px); }
+  body.font-small #screen-gameover .modal-box {
+    padding: clamp(12px, 2.6vh, 20px) clamp(16px, 3.4vw, 24px);
+    gap: clamp(5px, 1.2vh, 8px);
+  }
 
   /* Médio (padrão) */
   body.font-medium { font-size: 16px; }
@@ -677,9 +767,7 @@
   body.font-large .modal-box ul li,
   body.font-large .modal-box p,
   body.font-large #question-text,
-  body.font-large .option-btn,
-  body.font-large #gameover-msg,
-  body.font-large #skill-message { font-size: 17px; }
+  body.font-large .option-btn { font-size: 17px; }
 
   body.font-large .question-header,
   body.font-large #question-feedback { font-size: 14px; }
@@ -697,10 +785,15 @@
   body.font-large .option-btn { padding: 14px 18px; }
 
   body.font-large .modal-box h2 { font-size: 24px; }
-  body.font-large #gameover-title { font-size: 24px; }
-  body.font-large #final-score { font-size: 48px; }
-  body.font-large #final-medal { font-size: 32px; }
-  body.font-large #screen-gameover .modal-box { padding: 32px 40px; gap: 16px; }
+  body.font-large #gameover-title { font-size: clamp(16px, 3.6vh, 24px); }
+  body.font-large #gameover-msg,
+  body.font-large #skill-message { font-size: clamp(12px, 2.6vh, 17px); }
+  body.font-large #final-score { font-size: clamp(28px, 6.4vh, 48px); }
+  body.font-large #final-medal { font-size: clamp(19px, 4.4vh, 32px); }
+  body.font-large #screen-gameover .modal-box {
+    padding: clamp(16px, 3.4vh, 32px) clamp(20px, 4.4vw, 40px);
+    gap: clamp(6px, 1.4vh, 16px);
+  }
 
   /* ===========================
      LIGHT THEME
@@ -799,6 +892,11 @@
   body.theme-light .option-btn:hover:not(:disabled) {
     border-color: #0077cc;
     background: rgba(0,120,200,0.12);
+  }
+  body.theme-light .option-btn.selected:not(:disabled) {
+    border-color: #0077cc;
+    background: rgba(0,120,200,0.16);
+    box-shadow: 0 0 0 2px rgba(0,120,200,0.25) inset;
   }
   body.theme-light .option-btn.correct {
     background: rgba(0,180,80,0.15);
@@ -968,6 +1066,11 @@
     background: rgba(255,238,0,0.2);
     border-color: #fff200;
     color: #fff200;
+  }
+  body.theme-contrast .option-btn.selected:not(:disabled) {
+    background: rgba(255,238,0,0.28);
+    border-color: #fff200;
+    box-shadow: 0 0 0 2px rgba(255,238,0,0.4) inset;
   }
   /* Correto: fundo amarelo escuro, texto preto — máximo contraste */
   body.theme-contrast .option-btn.correct {
