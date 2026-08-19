@@ -65,6 +65,12 @@ const CONFIG = {
   fuelGain:  { correct: 12 },
   fuelDrain: 0.018,
   hudHeight:  50,
+
+  // ── Velocidade do avião (aceleração/frenagem com A/D ou setas ←/→)
+  speedMin:       3.5,   // velocidade mínima permitida
+  speedMax:       13,    // velocidade máxima permitida
+  speedAccelRate: 0.12,  // ganho de velocidade por frame ao acelerar (D / →)
+  speedBrakeRate: 0.18,  // perda de velocidade por frame ao frear (A / ←)
 };
 
 // ─── IMAGES ────────────────────────────────────────────────────────────────
@@ -94,6 +100,7 @@ function createInitialState() {
   return {
     running: false, paused: false, phase: 0, score: 0, fuel: 100,
     planeY: 0, velY: 0, scrollX: 0,
+    speed: CONFIG.phases[0].speed, // velocidade atual do avião (ajustável com A/D ou ←/→)
     birds: [], qmarks: [], clouds: [], particles: [],
     questionPending: false, currentQuestion: null,
     animFrame: null, keys: {},
@@ -120,6 +127,7 @@ const hudPhase         = document.getElementById('hud-phase');
 const fuelBar          = document.getElementById('fuel-bar');
 const fuelText         = document.getElementById('fuel-text');
 const scoreEl          = document.getElementById('score');
+const speedEl           = document.getElementById('speed-value');
 const questionOverlay  = document.getElementById('question-overlay');
 const questionText     = document.getElementById('question-text');
 const questionOpts     = document.getElementById('question-options');
@@ -154,7 +162,7 @@ document.getElementById('btn-menu').addEventListener('click', () => showScreen('
 document.addEventListener('keydown', e => {
   state.keys[e.code] = true;
   if (e.code === 'Escape' && state.running) togglePause();
-  if (['ArrowUp','ArrowDown','KeyW','KeyS','Space'].includes(e.code)) e.preventDefault();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyS','KeyA','KeyD','Space'].includes(e.code)) e.preventDefault();
 });
 document.addEventListener('keyup', e => { state.keys[e.code] = false; });
 
@@ -172,6 +180,7 @@ function startGame() {
   applyPhaseTheme(0);
   showPhaseBanner(CONFIG.phases[0].name, CONFIG.phases[0].description);
   updatePhaseHUD();
+  if (speedEl) speedEl.textContent = state.speed.toFixed(1);
   loop();
 }
 
@@ -355,7 +364,15 @@ function update() {
     Math.min(gameH - CONFIG.planeHeight / 2 - 10, state.planeY + state.velY)
   );
 
-  state.scrollX += phaseConf.speed;
+  // ── Aceleração / Frenagem (A/D ou setas ←/→), respeitando limites min/max
+  const accelKey = state.keys['KeyD'] || state.keys['ArrowRight'];
+  const brakeKey = state.keys['KeyA'] || state.keys['ArrowLeft'];
+  if (accelKey) state.speed += CONFIG.speedAccelRate;
+  if (brakeKey) state.speed -= CONFIG.speedBrakeRate;
+  state.speed = Math.max(CONFIG.speedMin, Math.min(CONFIG.speedMax, state.speed));
+  if (speedEl) speedEl.textContent = state.speed.toFixed(1);
+
+  state.scrollX += state.speed;
 
   // ── Nuvens
   state.clouds.forEach(c => c.x -= c.speed);
@@ -369,7 +386,7 @@ function update() {
       state.birds.push({
         x: canvas.width + 20 + i * 65,
         y: CONFIG.hudHeight + 40 + Math.random() * (gameH - CONFIG.hudHeight - 100),
-        speed: phaseConf.speed + 0.5 + Math.random() * phaseConf.birdSpeedVar,
+        speed: state.speed + 0.5 + Math.random() * phaseConf.birdSpeedVar,
         flapOffset: Math.random() * Math.PI * 2,
       });
     }
@@ -380,7 +397,7 @@ function update() {
     state.qmarks.push({
       x: canvas.width + 20,
       y: CONFIG.hudHeight + 60 + Math.random() * (gameH - CONFIG.hudHeight - 120),
-      speed: phaseConf.speed * 0.75,
+      speed: state.speed * 0.75,
       pulse: 0,
     });
   }
