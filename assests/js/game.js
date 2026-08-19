@@ -67,6 +67,16 @@ const CONFIG = {
   hudHeight:  50,
 };
 
+// ─── ACELERAR / FREAR — posição horizontal do avião ────────────────────────
+// O avião pode se mover para frente (acelerar) e para trás (frear), além do
+// movimento vertical já existente. A posição horizontal também define a
+// velocidade relativa do mundo (acelerar = tudo passa mais rápido; frear =
+// mais tempo de reação contra os pássaros).
+const PLANE_X_DEFAULT = 120;   // posição horizontal neutra (padrão)
+const PLANE_X_RANGE   = 75;    // quanto o avião pode avançar/recuar a partir do padrão
+const PLANE_X_MIN     = PLANE_X_DEFAULT - PLANE_X_RANGE; // freando ao máximo
+const PLANE_X_MAX     = PLANE_X_DEFAULT + PLANE_X_RANGE; // acelerando ao máximo
+
 // ─── IMAGES ────────────────────────────────────────────────────────────────
 const IMAGES = {};
 let imagesLoaded = 0;
@@ -93,7 +103,8 @@ let state = {};
 function createInitialState() {
   return {
     running: false, paused: false, phase: 0, score: 0, fuel: 100,
-    planeY: 0, velY: 0, scrollX: 0,
+    planeY: 0, velY: 0, planeX: PLANE_X_DEFAULT, velX: 0, scrollX: 0,
+    speedMultiplier: 1, // 1 = velocidade normal; >1 acelerando; <1 freando
     birds: [], qmarks: [], clouds: [], particles: [],
     questionPending: false, currentQuestion: null,
     animFrame: null, keys: {},
@@ -162,7 +173,7 @@ btnQuestionClose.addEventListener('click', closeQuestion);
 document.addEventListener('keydown', e => {
   state.keys[e.code] = true;
   if (e.code === 'Escape' && state.running) togglePause();
-  if (['ArrowUp','ArrowDown','KeyW','KeyS','Space'].includes(e.code)) e.preventDefault();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyS','KeyA','KeyD','Space'].includes(e.code)) e.preventDefault();
   // Navegação por teclado nas alternativas da pergunta (W/S, ↑/↓, Enter)
   if (state.questionPending) handleQuestionKeydown(e);
 });
@@ -352,7 +363,7 @@ function update() {
     return;
   }
 
-  // ── Controles
+  // ── Controles verticais (subir / descer)
   const accel = state.phase === 0 ? 0.45 : 0.6;
   const up   = state.keys['KeyW'] || state.keys['ArrowUp'];
   const down = state.keys['KeyS'] || state.keys['ArrowDown'];
@@ -365,10 +376,25 @@ function update() {
     Math.min(gameH - CONFIG.planeHeight / 2 - 10, state.planeY + state.velY)
   );
 
-  state.scrollX += phaseConf.speed;
+  // ── Controles horizontais (acelerar / frear)
+  const accelerate = state.keys['KeyD'] || state.keys['ArrowRight'];
+  const brake      = state.keys['KeyA'] || state.keys['ArrowLeft'];
+  if (accelerate) state.velX += accel;
+  if (brake)      state.velX -= accel;
+  state.velX *= 0.88;
+  state.velX  = Math.max(-8, Math.min(8, state.velX));
+  state.planeX = Math.max(PLANE_X_MIN, Math.min(PLANE_X_MAX, state.planeX + state.velX));
+
+  // A posição horizontal do avião define o quanto o mundo passa mais rápido
+  // (acelerando) ou mais devagar (freando) — de 0.6x a 1.4x a velocidade da fase
+  const speedRatio      = (state.planeX - PLANE_X_DEFAULT) / PLANE_X_RANGE; // -1..1
+  const speedMultiplier = 1 + speedRatio * 0.4;
+  state.speedMultiplier = speedMultiplier; // exposto para o HUD
+
+  state.scrollX += phaseConf.speed * speedMultiplier;
 
   // ── Nuvens
-  state.clouds.forEach(c => c.x -= c.speed);
+  state.clouds.forEach(c => c.x -= c.speed * speedMultiplier);
   state.clouds = state.clouds.filter(c => c.x + c.w > 0);
   if (state.clouds.length < 8) state.clouds.push(createCloud(canvas.width + 20));
 
@@ -398,15 +424,15 @@ function update() {
   state.birdFlap  += 0.15;
   state.planeFlap += 0.08;
 
-  state.birds.forEach(b => b.x -= b.speed);
+  state.birds.forEach(b => b.x -= b.speed * speedMultiplier);
   state.birds  = state.birds.filter(b => b.x + CONFIG.birdWidth > 0);
-  state.qmarks.forEach(q => { q.x -= q.speed; q.pulse += 0.05; });
+  state.qmarks.forEach(q => { q.x -= q.speed * speedMultiplier; q.pulse += 0.05; });
   state.qmarks = state.qmarks.filter(q => q.x + CONFIG.qMarkSize > 0);
   state.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.03; p.vy += 0.1; });
   state.particles = state.particles.filter(p => p.life > 0);
 
   // ── Colisões
-  const planeX        = 120;
+  const planeX        = state.planeX;
   const birdFuelLoss  = state.phase === 2 ? 15 : state.phase === 1 ? 12 : 10;
   const birdScoreLoss = 5; // -5 pts por pássaro em todas as fases
 
@@ -781,7 +807,7 @@ function draw() {
   });
   ctx.globalAlpha = 1;
 
-  drawPlane(120, state.planeY, phaseConf);
+  drawPlane(state.planeX, state.planeY, phaseConf);
   drawTimerBar(W, H, phaseConf);
   drawProgressDots(W, H, phaseConf);
 
@@ -975,13 +1001,16 @@ function drawQMark(q, accentColor) {
 // ─── DRAW PLANE ────────────────────────────────────────────────────────────
 function drawPlane(x, y, phaseConf) {
   const tilt = state.velY * 1.5;
+  const speedMul = state.speedMultiplier || 1;
   ctx.save();
   ctx.translate(x, y); ctx.rotate(tilt * Math.PI / 180);
   if (IMAGES.aviao && IMAGES.aviao.complete && IMAGES.aviao.naturalWidth > 0) {
-    for (let i = 0; i < 5; i++) {
-      ctx.globalAlpha = 0.15 - i * 0.025;
+    // Rastro fica mais longo acelerando e mais curto freando
+    const exhaustCount = Math.round(4 + speedMul * 2); // ~5 no padrão, mais em alta, menos freando
+    for (let i = 0; i < exhaustCount; i++) {
+      ctx.globalAlpha = (0.15 - i * 0.02) * Math.min(1, speedMul);
       ctx.fillStyle = phaseConf.exhaustColor;
-      ctx.beginPath(); ctx.ellipse(-50 - i*12, 0, 10-i, 5-i*0.5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-50 - i*12, 0, 10-i*0.8, 5-i*0.4, 0, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;
     const pw = CONFIG.planeWidth * 2.6, ph = pw * (1024/1536);
