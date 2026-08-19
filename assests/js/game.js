@@ -35,7 +35,7 @@ const CONFIG = {
       skyImg:       'ceu_por_do_sol',
       cloudColor:   '#ffcca0', cloudAlpha: 0.45,
       accentColor:  '#ff8c42', hudBorder: 'rgba(255,140,66,0.3)',
-      exhaustColor: '#ff6b00', groundColor: '#3a2010', birdTint: 'rgba(255,120,60,0.35)',
+      exhaustColor: '#ff6b00', groundColor: '#3a2010', birdTint: null,
     },
     {
       id: 3,
