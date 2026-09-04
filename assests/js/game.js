@@ -99,7 +99,7 @@ function loadImages(callback) {
 }
 
 // ─── STATE ─────────────────────────────────────────────────────────────────
-let state = {};
+let state = { keys: {} };
 function createInitialState() {
   return {
     running: false, paused: false, phase: 0, score: 0, fuel: 100,
@@ -146,6 +146,7 @@ const hud              = document.getElementById('hud');
 
 // ─── SCREENS ───────────────────────────────────────────────────────────────
 function showScreen(name) {
+  console.log('[DEBUG game.js] showScreen chamado com:', name, '| window.AudioEngine existe?', !!window.AudioEngine);
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
   // Botão de acessibilidade só aparece fora do jogo

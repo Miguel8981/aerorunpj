@@ -3,7 +3,7 @@
 // Above_the_Clouds.mp3 toca em loop assim que o voo começa (tela do jogo).
 // Nas demais telas (instruções, fim de jogo) fica tudo em silêncio.
 
-const AudioEngine = (() => {
+window.AudioEngine = (() => {
   'use strict';
 
   const menuMusic = new Audio('assests/audio/Morning_Altitude.mp3');
