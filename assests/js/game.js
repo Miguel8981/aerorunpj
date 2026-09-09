@@ -1303,9 +1303,9 @@ function endGame(won, message) {
   const btnClose = document.getElementById('btn-close-accessibility');
 
   // Fonte
-  const fontSmall  = document.getElementById('font-small');
   const fontMedium = document.getElementById('font-medium');
   const fontLarge  = document.getElementById('font-large');
+  const fontXLarge = document.getElementById('font-xlarge');
   const previewText = document.getElementById('font-preview-text');
 
   // Tema
@@ -1323,18 +1323,19 @@ function endGame(won, message) {
   const CB_MODES = ['none', 'deuteranopia', 'protanopia', 'tritanopia'];
 
   let currentFont  = localStorage.getItem(PREF_FONT)  || 'medium';
+  if (currentFont === 'small') currentFont = 'medium'; // compatibilidade com preferência antiga removida
   let currentTheme = localStorage.getItem(PREF_THEME) || 'dark';
   let currentCB    = localStorage.getItem(PREF_CB)    || 'none';
 
   /* ---- Fonte ---- */
   function applyFont(size) {
-    document.body.classList.remove('font-small', 'font-medium', 'font-large');
+    document.body.classList.remove('font-medium', 'font-large', 'font-xlarge');
     document.body.classList.add('font-' + size);
     currentFont = size;
     localStorage.setItem(PREF_FONT, size);
-    [fontSmall, fontMedium, fontLarge].forEach(b => b.classList.remove('active'));
-    ({ small: fontSmall, medium: fontMedium, large: fontLarge })[size].classList.add('active');
-    previewText.style.fontSize = size === 'small' ? '12px' : size === 'large' ? '18px' : '15px';
+    [fontMedium, fontLarge, fontXLarge].forEach(b => b.classList.remove('active'));
+    ({ medium: fontMedium, large: fontLarge, xlarge: fontXLarge })[size].classList.add('active');
+    previewText.style.fontSize = size === 'large' ? '18px' : size === 'xlarge' ? '21px' : '15px';
   }
 
   /* ---- Tema ---- */
@@ -1374,9 +1375,9 @@ function endGame(won, message) {
     if (e.key === 'Escape' && !modal.classList.contains('hidden')) modal.classList.add('hidden');
   });
 
-  fontSmall.addEventListener('click',  () => applyFont('small'));
   fontMedium.addEventListener('click', () => applyFont('medium'));
   fontLarge.addEventListener('click',  () => applyFont('large'));
+  fontXLarge.addEventListener('click', () => applyFont('xlarge'));
 
   themeDark.addEventListener('click',     () => applyTheme('dark'));
   themeLight.addEventListener('click',    () => applyTheme('light'));

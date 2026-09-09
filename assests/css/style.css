@@ -48,15 +48,26 @@
   }
   .screen.active {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    overflow-y: auto;
   }
-  
+  /* Centraliza verticalmente via margin:auto no próprio conteúdo (não no
+     contêiner). Isso evita o bug clássico do flexbox onde align-items:center
+     + overflow corta o topo do conteúdo e impede a rolagem até lá. Quando o
+     conteúdo é mais alto que a tela, a margem vira 0 e dá para rolar
+     normalmente do topo ao fim. */
+  .screen.active > .start-content,
+  .screen.active > .modal-box {
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
   /* ===========================
      STARS BACKGROUND
      =========================== */
   .stars-bg {
-    position: absolute;
+    position: fixed;
     inset: 0;
     background:
       radial-gradient(ellipse at 20% 30%, rgba(0,180,255,0.08) 0%, transparent 50%),
@@ -721,43 +732,6 @@
      Afeta todas as telas: início, instruções, perguntas, fim de jogo, pausa
      =========================== */
 
-  /* Pequeno */
-  body.font-small {
-    font-size: 13px;
-  }
-  body.font-small .start-info p,
-  body.font-small .controls-hint,
-  body.font-small .modal-box ul li,
-  body.font-small .modal-box p,
-  body.font-small #question-text,
-  body.font-small .option-btn { font-size: 11px; }
-
-  body.font-small .question-header,
-  body.font-small #question-feedback { font-size: 10px; }
-  body.font-small .subtitle { font-size: 10px; }
-
-  body.font-small .btn-primary,
-  body.font-small .btn-secondary { font-size: 10px; padding: 10px 24px; width: 200px; }
-  /* Botão fechar do modal de acessibilidade não deve mudar de tamanho com a fonte */
-  body.font-small .btn-close-a11y { font-size: 11px !important; padding: 12px 32px !important; width: 100% !important; }
-
-  body.font-small h1 { font-size: clamp(28px, 5.5vw, 48px); }
-  body.font-small .plane-logo { font-size: 36px; }
-  body.font-small .start-content { gap: 12px; padding: 20px; }
-  body.font-small .question-box { padding: 18px 20px; gap: 8px; }
-  body.font-small .option-btn { padding: 8px 12px; }
-
-  body.font-small .modal-box h2 { font-size: 16px; }
-  body.font-small #gameover-title { font-size: clamp(13px, 3vh, 16px); }
-  body.font-small #gameover-msg,
-  body.font-small #skill-message { font-size: clamp(10px, 2vh, 11px); }
-  body.font-small #final-score { font-size: clamp(22px, 5vh, 30px); }
-  body.font-small #final-medal { font-size: clamp(15px, 3.6vh, 20px); }
-  body.font-small #screen-gameover .modal-box {
-    padding: clamp(12px, 2.6vh, 20px) clamp(16px, 3.4vw, 24px);
-    gap: clamp(5px, 1.2vh, 8px);
-  }
-
   /* Médio (padrão) */
   body.font-medium { font-size: 16px; }
 
@@ -797,6 +771,44 @@
     padding: clamp(16px, 3.4vh, 32px) clamp(20px, 4.4vw, 40px);
     gap: clamp(6px, 1.4vh, 16px);
   }
+
+  /* Extra Grande */
+  body.font-xlarge {
+    font-size: 24px;
+  }
+  body.font-xlarge .start-info p,
+  body.font-xlarge .controls-hint,
+  body.font-xlarge .modal-box ul li,
+  body.font-xlarge .modal-box p,
+  body.font-xlarge #question-text,
+  body.font-xlarge .option-btn { font-size: 21px; }
+
+  body.font-xlarge .question-header,
+  body.font-xlarge #question-feedback { font-size: 17px; }
+  body.font-xlarge .subtitle { font-size: 16px; }
+
+  body.font-xlarge .btn-primary,
+  body.font-xlarge .btn-secondary { font-size: 17px; padding: 18px 48px; width: 300px; }
+  /* Botão fechar não muda de tamanho com a fonte */
+  body.font-xlarge .btn-close-a11y { font-size: 14px !important; padding: 12px 32px !important; width: 100% !important; }
+
+  body.font-xlarge h1 { font-size: clamp(52px, 10vw, 88px); }
+  body.font-xlarge .plane-logo { font-size: 72px; }
+  body.font-xlarge .start-content { gap: 24px; padding: 44px 24px; }
+  body.font-xlarge .question-box { padding: 36px 40px; gap: 20px; }
+  body.font-xlarge .option-btn { padding: 17px 22px; }
+
+  body.font-xlarge .modal-box h2 { font-size: 29px; }
+  body.font-xlarge #gameover-title { font-size: clamp(19px, 4.2vh, 29px); }
+  body.font-xlarge #gameover-msg,
+  body.font-xlarge #skill-message { font-size: clamp(14px, 3vh, 20px); }
+  body.font-xlarge #final-score { font-size: clamp(33px, 7.5vh, 56px); }
+  body.font-xlarge #final-medal { font-size: clamp(22px, 5vh, 38px); }
+  body.font-xlarge #screen-gameover .modal-box {
+    padding: clamp(19px, 4vh, 38px) clamp(24px, 5.2vw, 48px);
+    gap: clamp(7px, 1.6vh, 19px);
+  }
+
 
   /* ===========================
      LIGHT THEME
@@ -1300,9 +1312,9 @@
     gap: 1px;
     line-height: 1;
   }
-  .font-btn:nth-child(1) { font-size: 14px; }
-  .font-btn:nth-child(2) { font-size: 19px; }
-  .font-btn:nth-child(3) { font-size: 23px; }
+  .font-btn:nth-child(1) { font-size: 17px; }
+  .font-btn:nth-child(2) { font-size: 21px; }
+  .font-btn:nth-child(3) { font-size: 25px; }
 
   .font-btn:hover:not(.active) {
     border-color: var(--accent);
