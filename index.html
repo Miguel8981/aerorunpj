@@ -9,8 +9,24 @@
 </head>
 <body>
 
+  <!-- OVERLAY: GIRAR DISPOSITIVO PARA PAISAGEM (somente celulares em retrato) -->
+  <div id="rotate-overlay" class="rotate-overlay">
+    <div class="rotate-content">
+      <div class="rotate-icon">📱</div>
+      <p>Gire seu dispositivo</p>
+      <span>O Aero Run é jogado na horizontal</span>
+    </div>
+  </div>
+
   <!-- BOTÃO DE ACESSIBILIDADE FIXO (sempre visível) -->
   <button id="btn-accessibility" class="a11y-fab" title="Acessibilidade" aria-label="Abrir menu de acessibilidade">♿</button>
+
+  <!-- BOTÃO E PAINEL DE ÁUDIO FIXOS (sempre visíveis) -->
+  <button id="btn-audio" class="a11y-fab audio-fab" title="Áudio" aria-label="Abrir controle de áudio">🔊</button>
+  <div id="audio-panel" class="audio-panel hidden" role="dialog" aria-label="Controle de áudio">
+    <button id="btn-mute" class="audio-mute-btn" title="Silenciar música" aria-label="Silenciar ou ativar música">🔊</button>
+    <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="60" aria-label="Volume da música">
+  </div>
 
   <!-- SVG oculto com filtros de daltonismo -->
   <svg id="colorblind-filters" aria-hidden="true" focusable="false">

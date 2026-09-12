@@ -1,23 +1,30 @@
 // audio.js — Aero Run · Trilhas sonoras
-// Morning_Altitude.mp3 toca em loop na tela inicial (menu).
+// Morning_Altitude.mp3 toca em loop na tela inicial (menu) e continua tocando na tela de instruções.
 // Above_the_Clouds.mp3 toca em loop assim que o voo começa (tela do jogo).
-// Nas demais telas (instruções, fim de jogo) fica tudo em silêncio.
+// Na tela de fim de jogo fica tudo em silêncio.
 
 window.AudioEngine = (() => {
   'use strict';
 
+  const PREF_MUTED  = 'aerorun_muted';
+  const PREF_VOLUME = 'aerorun_volume';
+
+  const savedVolume = parseFloat(localStorage.getItem(PREF_VOLUME));
+  const initialVolume = Number.isFinite(savedVolume) ? Math.min(1, Math.max(0, savedVolume)) : 0.6;
+
   const menuMusic = new Audio('assests/audio/Morning_Altitude.mp3');
   menuMusic.loop    = true;
-  menuMusic.volume  = 0.6;
+  menuMusic.volume  = initialVolume;
   menuMusic.preload = 'auto';
 
   const gameMusic = new Audio('assests/audio/Above_the_Clouds.mp3');
   gameMusic.loop    = true;
-  gameMusic.volume  = 0.6;
+  gameMusic.volume  = initialVolume;
   gameMusic.preload = 'auto';
 
   let unlocked = false;
-  let muted    = false;
+  let muted    = localStorage.getItem(PREF_MUTED) === 'true';
+  let volume   = initialVolume;
   let currentTrack = null; // referência à música tocando no momento ('menu' | 'game' | null)
 
   // A tela inicial já nasce com a classe "active" no HTML (não passa pelo
@@ -81,9 +88,9 @@ window.AudioEngine = (() => {
 
   // Chamado pelo showScreen() do jogo a cada troca de tela
   function onScreenChange(name) {
-    if (name === 'start')      currentTrack = 'menu';
-    else if (name === 'game')  currentTrack = 'game';
-    else                       currentTrack = null;
+    if (name === 'start' || name === 'instructions') currentTrack = 'menu';
+    else if (name === 'game')                        currentTrack = 'game';
+    else                                              currentTrack = null;
 
     if (!unlocked) return; // aguarda o primeiro gesto do usuário
     playTrack(currentTrack);
@@ -91,6 +98,7 @@ window.AudioEngine = (() => {
 
   function toggleMute() {
     muted = !muted;
+    localStorage.setItem(PREF_MUTED, muted);
     if (muted) {
       menuMusic.pause();
       gameMusic.pause();
@@ -104,9 +112,27 @@ window.AudioEngine = (() => {
     return muted;
   }
 
+  function setVolume(v) {
+    volume = Math.min(1, Math.max(0, v));
+    menuMusic.volume = volume;
+    gameMusic.volume = volume;
+    localStorage.setItem(PREF_VOLUME, volume);
+
+    // Ajustar o volume enquanto mudo não faz sentido ficar sem som: destrava.
+    if (muted && volume > 0) {
+      muted = false;
+      localStorage.setItem(PREF_MUTED, 'false');
+      if (currentTrack) playTrack(currentTrack);
+    }
+  }
+
+  function getVolume() {
+    return volume;
+  }
+
   // Mantidas por compatibilidade com chamadas antigas
   function playMenu() { onScreenChange('start'); }
   function stopMenu()  { stopAll(); }
 
-  return { playMenu, stopMenu, onScreenChange, toggleMute, isMuted };
+  return { playMenu, stopMenu, onScreenChange, toggleMute, isMuted, setVolume, getVolume };
 })();

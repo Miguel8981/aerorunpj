@@ -35,6 +35,96 @@
     width: 100vw;
     height: 100vh;
   }
+
+  /* ===========================
+     OVERLAY: GIRAR PARA PAISAGEM
+     Fica oculto por padrão (desktop/notebook) e só aparece em telas de
+     celular quando o dispositivo está no modo retrato.
+     A classe "force-rotate" é aplicada via JS (game.js) como reforço
+     para navegadores que não reagem bem à media query de orientação.
+     =========================== */
+  .rotate-overlay {
+    display: none;
+  }
+
+  @keyframes rotate-hint {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(90deg); }
+  }
+
+  body.force-rotate .rotate-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--sky-dark);
+    text-align: center;
+    padding: 32px;
+  }
+  body.force-rotate .rotate-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    color: var(--text);
+  }
+  body.force-rotate .rotate-icon {
+    font-size: 64px;
+    animation: rotate-hint 1.6s ease-in-out infinite;
+  }
+  body.force-rotate .rotate-content p {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin: 0;
+  }
+  body.force-rotate .rotate-content span {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    .rotate-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--sky-dark);
+      text-align: center;
+      padding: 32px;
+    }
+
+    .rotate-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      color: var(--text);
+    }
+
+    .rotate-icon {
+      font-size: 64px;
+      animation: rotate-hint 1.6s ease-in-out infinite;
+    }
+
+    .rotate-content p {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+
+    .rotate-content span {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+  }
   
   /* ===========================
      SCREENS
@@ -1226,6 +1316,84 @@
     background: rgba(0, 25, 70, 0.9);
   }
   .a11y-fab:active { transform: scale(0.96); }
+
+  /* ===========================
+     BOTÃO E PAINEL DE ÁUDIO
+     =========================== */
+  .audio-fab {
+    right: 72px; /* ao lado do botão de acessibilidade (right: 16px + 48px + gap) */
+  }
+
+  .audio-panel {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 212, 255, 0.35);
+    background: rgba(0, 10, 40, 0.9);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 212, 255, 0.2);
+    backdrop-filter: blur(8px);
+  }
+  .audio-panel.hidden {
+    display: none;
+  }
+
+  .audio-mute-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--accent);
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .audio-mute-btn:hover { background: rgba(0, 212, 255, 0.15); }
+
+  .volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 110px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(0, 212, 255, 0.25);
+    outline: none;
+    cursor: pointer;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+    cursor: pointer;
+  }
+  .volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+    cursor: pointer;
+  }
+  .volume-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(0, 212, 255, 0.25);
+  }
 
   /* ===========================
      MODAL DE ACESSIBILIDADE

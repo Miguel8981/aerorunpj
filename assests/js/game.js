@@ -152,6 +152,11 @@ function showScreen(name) {
   // Botão de acessibilidade só aparece fora do jogo
   const fab = document.getElementById('btn-accessibility');
   if (fab) fab.style.display = (name === 'game') ? 'none' : '';
+  // Botão e painel de áudio também só aparecem fora do jogo
+  const audioFab   = document.getElementById('btn-audio');
+  const audioPanel = document.getElementById('audio-panel');
+  if (audioFab)   audioFab.style.display = (name === 'game') ? 'none' : '';
+  if (audioPanel && name === 'game') audioPanel.classList.add('hidden');
   // Áudio: música do menu só toca na tela inicial; para nas demais (voo incluso)
   if (window.AudioEngine) AudioEngine.onScreenChange(name);
 }
@@ -1387,4 +1392,76 @@ function endGame(won, message) {
   cbDeutBtn.addEventListener('click', () => applyCB('deuteranopia'));
   cbProtBtn.addEventListener('click', () => applyCB('protanopia'));
   cbTritBtn.addEventListener('click', () => applyCB('tritanopia'));
+})();
+
+/* ===========================
+   CONTROLE DE ÁUDIO (mudo + volume)
+   =========================== */
+(function () {
+  const btnAudio     = document.getElementById('btn-audio');
+  const audioPanel   = document.getElementById('audio-panel');
+  const btnMute      = document.getElementById('btn-mute');
+  const volumeSlider = document.getElementById('volume-slider');
+
+  function updateAudioUI() {
+    const engine = window.AudioEngine;
+    const muted  = engine ? engine.isMuted()  : false;
+    const volume = engine ? engine.getVolume() : 0.6;
+    const icon = muted || volume === 0 ? '🔇' : '🔊';
+    btnAudio.textContent = icon;
+    btnMute.textContent  = icon;
+    volumeSlider.value   = Math.round(volume * 100);
+  }
+  updateAudioUI();
+
+  btnAudio.addEventListener('click', (e) => {
+    e.stopPropagation();
+    audioPanel.classList.toggle('hidden');
+  });
+
+  btnMute.addEventListener('click', () => {
+    if (window.AudioEngine) window.AudioEngine.toggleMute();
+    updateAudioUI();
+  });
+
+  volumeSlider.addEventListener('input', () => {
+    if (window.AudioEngine) window.AudioEngine.setVolume(volumeSlider.value / 100);
+    updateAudioUI();
+  });
+
+  // Fecha o painel ao clicar fora dele
+  document.addEventListener('click', (e) => {
+    if (!audioPanel.classList.contains('hidden') &&
+        !audioPanel.contains(e.target) &&
+        e.target !== btnAudio) {
+      audioPanel.classList.add('hidden');
+    }
+  });
+
+  // Fecha o painel com a tecla Esc
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !audioPanel.classList.contains('hidden')) {
+      audioPanel.classList.add('hidden');
+    }
+  });
+})();
+
+/* ---------------------------------------------------------
+   OVERLAY "GIRE SEU DISPOSITIVO"
+   Reforço em JS além da media query CSS: alguns navegadores
+   mobile não reagem bem só ao "orientation" do CSS, então aqui
+   comparamos largura x altura da própria janela diretamente.
+   --------------------------------------------------------- */
+(function () {
+  const MOBILE_MAX_WIDTH = 900; // mesmo limite usado na media query do CSS
+
+  function checkOrientation() {
+    const isSmallScreen = window.innerWidth <= MOBILE_MAX_WIDTH;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    document.body.classList.toggle('force-rotate', isSmallScreen && isPortrait);
+  }
+
+  checkOrientation();
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', checkOrientation);
 })();
