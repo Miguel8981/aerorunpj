@@ -81,7 +81,7 @@ const PLANE_X_MAX     = PLANE_X_DEFAULT + PLANE_X_RANGE; // acelerando ao máxim
 const IMAGES = {};
 let imagesLoaded = 0;
 const IMAGE_LIST = {
-  aviao:          'assests/img/aviao.png',
+  nave:          'assests/img/nave.png',
   passaro:        'assests/img/passaro.png',
   ceu_dia:        'assests/img/ceu_dia.png',
   ceu_por_do_sol: 'assests/img/ceu_por_do_sol.png',
@@ -1010,7 +1010,7 @@ function drawPlane(x, y, phaseConf) {
   const speedMul = state.speedMultiplier || 1;
   ctx.save();
   ctx.translate(x, y); ctx.rotate(tilt * Math.PI / 180);
-  if (IMAGES.aviao && IMAGES.aviao.complete && IMAGES.aviao.naturalWidth > 0) {
+  if (IMAGES.nave && IMAGES.nave.complete && IMAGES.nave.naturalWidth > 0) {
     // Rastro fica mais longo acelerando e mais curto freando
     const exhaustCount = Math.round(4 + speedMul * 2); // ~5 no padrão, mais em alta, menos freando
     for (let i = 0; i < exhaustCount; i++) {
@@ -1020,7 +1020,7 @@ function drawPlane(x, y, phaseConf) {
     }
     ctx.globalAlpha = 1;
     const pw = CONFIG.planeWidth * 2.6, ph = pw * (1024/1536);
-    ctx.drawImage(IMAGES.aviao, -pw/2, -ph/2, pw, ph);
+    ctx.drawImage(IMAGES.nave, -pw/2, -ph/2, pw, ph);
   } else {
     ctx.fillStyle = '#e8f4fd'; ctx.strokeStyle = '#a0c8e8'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(0,0,32,12,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
