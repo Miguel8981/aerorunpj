@@ -1012,14 +1012,14 @@ function drawPlane(x, y, phaseConf) {
   ctx.translate(x, y); ctx.rotate(tilt * Math.PI / 180);
   if (IMAGES.nave && IMAGES.nave.complete && IMAGES.nave.naturalWidth > 0) {
     // Rastro fica mais longo acelerando e mais curto freando
+    const pw = CONFIG.planeWidth * 1.7, ph = pw * (1024/1536);
     const exhaustCount = Math.round(4 + speedMul * 2); // ~5 no padrão, mais em alta, menos freando
     for (let i = 0; i < exhaustCount; i++) {
       ctx.globalAlpha = (0.15 - i * 0.02) * Math.min(1, speedMul);
       ctx.fillStyle = phaseConf.exhaustColor;
-      ctx.beginPath(); ctx.ellipse(-50 - i*12, 0, 10-i*0.8, 5-i*0.4, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-pw/2 + 4 - i*9, 0, 7-i*0.6, 3.5-i*0.3, 0, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    const pw = CONFIG.planeWidth * 2.6, ph = pw * (1024/1536);
     ctx.drawImage(IMAGES.nave, -pw/2, -ph/2, pw, ph);
   } else {
     ctx.fillStyle = '#e8f4fd'; ctx.strokeStyle = '#a0c8e8'; ctx.lineWidth = 1.5;
