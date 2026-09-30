@@ -1750,3 +1750,35 @@
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+/* ===========================
+   ACESSIBILIDADE — LEITOR DE TELA E TECLADO
+   =========================== */
+
+/* Texto só para leitores de tela (invisível na tela) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Foco visível para quem navega com Tab */
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: 3px;
+}
+
+/* Títulos e avisos que recebem foco por script não precisam de contorno */
+h1[tabindex="-1"]:focus,
+h2[tabindex="-1"]:focus,
+#question-feedback[tabindex="-1"]:focus {
+  outline: none;
+}

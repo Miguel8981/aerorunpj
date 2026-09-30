@@ -1,5 +1,16 @@
 // game.js — Aero Run v3 (fases por acertos + tempo limite)
 
+// ─── ANUNCIADOR PARA LEITOR DE TELA ────────────────────────────────────────
+// Escreve texto numa região aria-live invisível. O canvas não é lido pelo
+// leitor de tela, então tudo que o jogador precisa saber passa por aqui.
+// urgent=true usa a região "assertive" (interrompe a fala atual).
+function announce(msg, urgent) {
+  const el = document.getElementById(urgent ? 'announcer-alert' : 'announcer');
+  if (!el) return;
+  el.textContent = '';                       // limpa para repetir mensagens iguais
+  setTimeout(() => { el.textContent = msg; }, 60);
+}
+
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const CONFIG = {
   phases: [
@@ -119,6 +130,9 @@ function createInitialState() {
     qSelectedIndex: 0,                         // alternativa destacada (W/S ou ↑/↓)
     qAnswered:      false,                     // true depois que a pergunta foi confirmada
     qShouldAdvance: false,                     // se true, avança de fase ao fechar a pergunta
+    // ── Avisos para leitor de tela ──
+    fuelWarnLevel: 0,                          // 0 = ok, 1 = abaixo de 25%, 2 = abaixo de 10%
+    timeWarned:    {},                         // avisos de tempo já falados na fase
   };
 }
 
@@ -133,6 +147,7 @@ const canvas           = document.getElementById('gameCanvas');
 const ctx              = canvas.getContext('2d');
 const hudPhase         = document.getElementById('hud-phase');
 const fuelBar          = document.getElementById('fuel-bar');
+const fuelTrack        = document.querySelector('.fuel-bar-track');
 const fuelText         = document.getElementById('fuel-text');
 const scoreEl          = document.getElementById('score');
 const questionOverlay  = document.getElementById('question-overlay');
@@ -159,6 +174,20 @@ function showScreen(name) {
   if (audioPanel && name === 'game') audioPanel.classList.add('hidden');
   // Áudio: música do menu só toca na tela inicial; para nas demais (voo incluso)
   if (window.AudioEngine) AudioEngine.onScreenChange(name);
+  focusScreenHeading(name);
+}
+
+// Leva o foco (e a fala do leitor de tela) para o título da nova tela.
+// Na tela do jogo não há título: só tira o foco do botão que foi clicado.
+function focusScreenHeading(name) {
+  setTimeout(() => {
+    const target = name === 'start'        ? document.querySelector('#screen-start h1')
+                 : name === 'instructions' ? document.querySelector('#screen-instructions h2')
+                 : name === 'gameover'     ? document.getElementById('gameover-title')
+                 : null;
+    if (target) target.focus({ preventScroll: true });
+    else if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  }, 80);
 }
 // ─── BUTTONS ───────────────────────────────────────────────────────────────
 document.getElementById('btn-start').addEventListener('click', e => {
@@ -179,6 +208,8 @@ btnQuestionClose.addEventListener('click', closeQuestion);
 document.addEventListener('keydown', e => {
   state.keys[e.code] = true;
   if (e.code === 'Escape' && state.running) togglePause();
+  // Tecla I: fala o status do jogo (leitor de tela)
+  if (e.code === 'KeyI' && state.running && !state.paused && !state.questionPending) announceStatus();
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyS','KeyA','KeyD','Space'].includes(e.code)) e.preventDefault();
   // Navegação por teclado nas alternativas da pergunta (W/S, ↑/↓, Enter)
   if (state.questionPending) handleQuestionKeydown(e);
@@ -198,6 +229,7 @@ function startGame() {
   showScreen('game');
   applyPhaseTheme(0);
   showPhaseBanner(CONFIG.phases[0].name, CONFIG.phases[0].description);
+  announce(`Jogo iniciado. ${CONFIG.phases[0].name}. ${CONFIG.phases[0].description} Use W e S para subir e descer, A e D para frear e acelerar. Aperte I para ouvir o status.`, true);
   updatePhaseHUD();
   loop();
 }
@@ -210,6 +242,17 @@ function updatePhaseHUD() {
   const needed   = pc.correctNeeded;
   // Mostra: "Fase 1 | ✅ 1/3 | ⏱ 38s"
   hudPhase.textContent = `Fase ${state.phase + 1}  ✅ ${correct}/${needed}  ⏱ ${timeLeft}s`;
+}
+
+// Fala o status atual (tecla I)
+function announceStatus() {
+  const pc = CONFIG.phases[state.phase];
+  announce(
+    `Fase ${state.phase + 1}. ${state.phaseCorrect} de ${pc.correctNeeded} acertos. ` +
+    `${Math.ceil(state.phaseTimeLeft)} segundos restantes. ` +
+    `Combustível ${Math.round(state.fuel)} por cento. ${state.score} pontos.`,
+    true
+  );
 }
 
 // ─── PHASE THEME ───────────────────────────────────────────────────────────
@@ -263,7 +306,9 @@ function advancePhase() {
       <div class="pt-loading"><div class="pt-loading-fill"></div></div>
     </div>
   `;
+  overlay.setAttribute('aria-hidden', 'true');
   document.getElementById('screen-game').appendChild(overlay);
+  announce(`Fase ${fromPhase + 1} completa! Pontuação ${state.score}. Preparando a fase ${toPhase + 1}: ${phaseNames[toPhase]}.`, true);
 
   // Sequência de animação
   const $ = s => overlay.querySelector(s);
@@ -299,6 +344,9 @@ function advancePhase() {
         state.running = true;
         state.animFrame = requestAnimationFrame(loop);
         showPhaseBanner(pc.name, pc.description);
+        state.fuelWarnLevel = 0;
+        state.timeWarned = {};
+        announce(`${pc.name}. ${pc.description} Combustível ${Math.round(state.fuel)} por cento.`, true);
       }, 600);
     }, 3800);
   });
@@ -358,6 +406,14 @@ function update() {
     );
     return;
   }
+
+  // ── Avisos de tempo para leitor de tela (30 e 10 segundos)
+  [30, 10].forEach(t => {
+    if (state.phaseTimeLeft <= t && !state.timeWarned[t] && CONFIG.phases[state.phase].timeLimit > t) {
+      state.timeWarned[t] = true;
+      announce(`Faltam ${t} segundos. ${state.phaseCorrect} de ${phaseConf.correctNeeded} acertos.`);
+    }
+  });
 
   // ── Combustível
   const drainRate = state.phase === 2 ? CONFIG.fuelDrain * 1.6
@@ -425,6 +481,10 @@ function update() {
       speed: phaseConf.speed * 0.75,
       pulse: 0,
     });
+    // Dica de posição para leitor de tela
+    const dy = state.qmarks[0].y - state.planeY;
+    const where = dy < -40 ? 'acima de você' : dy > 40 ? 'abaixo de você' : 'na sua altura';
+    announce(`Ponto de interrogação à frente, ${where}.`);
   }
 
   state.birdFlap  += 0.15;
@@ -450,6 +510,7 @@ function update() {
       state.fuel  = Math.max(0, state.fuel - birdFuelLoss);
       spawnParticles(planeX, state.planeY, '#ff6b35');
       showScorePopup(planeX, state.planeY, `-${birdScoreLoss}`);
+      announce(`Colisão com pássaro! Menos ${birdScoreLoss} pontos. Combustível ${Math.round(state.fuel)} por cento.`, true);
       updateHUD();
     }
   });
@@ -488,6 +549,24 @@ function updateHUD() {
     fuelBar.style.background = '';
   }
   scoreEl.textContent = state.score;
+
+  // Acessibilidade: valor da barra de combustível para leitores de tela
+  const rounded = Math.round(pct);
+  if (fuelTrack && fuelTrack.getAttribute('aria-valuenow') !== String(rounded)) {
+    fuelTrack.setAttribute('aria-valuenow', rounded);
+  }
+  // Avisos falados de combustível baixo (uma vez por nível)
+  if (state.running) {
+    if (pct < 10 && state.fuelWarnLevel < 2) {
+      state.fuelWarnLevel = 2;
+      announce(`Atenção! Combustível crítico: ${rounded} por cento.`, true);
+    } else if (pct < 25 && state.fuelWarnLevel < 1) {
+      state.fuelWarnLevel = 1;
+      announce(`Combustível baixo: ${rounded} por cento.`, true);
+    } else if (pct >= 35 && state.fuelWarnLevel > 0) {
+      state.fuelWarnLevel = 0;   // reabasteceu: os avisos voltam a valer
+    }
+  }
 }
 
 // ─── DRAW ──────────────────────────────────────────────────────────────────
@@ -1081,6 +1160,7 @@ function showQuestion() {
     const btn = document.createElement('button');
     btn.className = 'option-btn';
     btn.textContent = opt;
+    btn.setAttribute('aria-label', `Alternativa ${i + 1} de ${state.currentQuestion.options.length}: ${opt}`);
     btn.addEventListener('click', () => answerQuestion(i, btn));
     questionOpts.appendChild(btn);
   });
@@ -1160,14 +1240,20 @@ function answerQuestion(idx, btn) {
 
   // A pergunta permanece aberta — o jogador decide quando continuar
   showQuestionActions();
+
+  // Leitor de tela: o foco vai para o feedback, que é lido na hora.
+  // Enter (ou Tab até o botão Continuar) fecha a pergunta.
+  questionFeedback.textContent += ' Aperte Enter para continuar.';
+  questionFeedback.focus({ preventScroll: true });
 }
 
 // Fecha a pergunta manualmente (botão "Continuar" ou "X" / Enter após responder)
 function closeQuestion() {
-  if (!state.qAnswered) return; // só pode fechar depois de responder
+  if (!state.qAnswered || !state.questionPending) return; // só fecha depois de responder (e só uma vez)
   questionOverlay.classList.add('hidden');
   hideQuestionActions();
   state.questionPending = false;
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
 
   const shouldAdvance = state.qShouldAdvance;
   state.qShouldAdvance = false;
@@ -1187,6 +1273,10 @@ function hideQuestionActions() {
 function updateOptionSelection() {
   const buttons = questionOpts.querySelectorAll('.option-btn');
   buttons.forEach((b, i) => b.classList.toggle('selected', i === state.qSelectedIndex));
+  // Foco acompanha a alternativa destacada: o leitor de tela lê a opção atual
+  if (state.questionPending && !state.qAnswered && buttons[state.qSelectedIndex]) {
+    buttons[state.qSelectedIndex].focus({ preventScroll: true });
+  }
 }
 
 function handleQuestionKeydown(e) {
@@ -1220,6 +1310,7 @@ function showScorePopup(x, y, text) {
   const el = document.createElement('div');
   el.className = `score-popup ${(text.startsWith('+') || text.startsWith('⛽')) ? 'positive' : 'negative'}`;
   el.textContent = text;
+  el.setAttribute('aria-hidden', 'true');
   el.style.left = x + 'px'; el.style.top = y + 'px';
   document.getElementById('screen-game').appendChild(el);
   setTimeout(() => el.remove(), 1200);
@@ -1231,6 +1322,7 @@ function showPhaseBanner(title, description) {
   if (existing) existing.remove();
   const el = document.createElement('div');
   el.id = 'phase-banner';
+  el.setAttribute('aria-hidden', 'true');
   const accent = CONFIG.phases[state.phase].accentColor;
   el.innerHTML = `<strong>${title}</strong><br><small style="opacity:0.85;font-size:0.68em;">${description || ''}</small>`;
   el.style.textShadow  = `0 0 30px ${accent}`;
@@ -1248,6 +1340,12 @@ function togglePause() {
   // Reajusta lastTick ao retomar para não penalizar o tempo
   if (!state.paused) state.lastTick = performance.now();
   pauseOverlay.classList.toggle('hidden', !state.paused);
+  if (state.paused) {
+    document.getElementById('btn-resume').focus({ preventScroll: true });
+  } else {
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    announce('Jogo retomado.');
+  }
 }
 
 // ─── MENSAGENS DE DERROTA (amigáveis e motivadoras) ────────────────────────
@@ -1290,6 +1388,9 @@ function endGame(won, message) {
   document.getElementById('skill-message').textContent = skillMsg;
 
   showScreen('gameover');
+
+  // Leitor de tela: o foco vai para o título; o resumo é falado logo depois
+  setTimeout(() => announce(`${message} Pontuação final: ${state.score}. ${medal.replace(/[🥇🥈🥉]/gu, '').trim()}`), 700);
 }
 
 // Preload
@@ -1332,6 +1433,13 @@ function endGame(won, message) {
   let currentTheme = localStorage.getItem(PREF_THEME) || 'dark';
   let currentCB    = localStorage.getItem(PREF_CB)    || 'none';
 
+  // Sincroniza aria-pressed com a classe "active" (leitor de tela diz "pressionado")
+  function syncPressed() {
+    [fontMedium, fontLarge, fontXLarge, themeDark, themeLight, themeContrast,
+     cbNone, cbDeutBtn, cbProtBtn, cbTritBtn]
+      .forEach(b => b.setAttribute('aria-pressed', b.classList.contains('active') ? 'true' : 'false'));
+  }
+
   /* ---- Fonte ---- */
   function applyFont(size) {
     document.body.classList.remove('font-medium', 'font-large', 'font-xlarge');
@@ -1341,6 +1449,7 @@ function endGame(won, message) {
     [fontMedium, fontLarge, fontXLarge].forEach(b => b.classList.remove('active'));
     ({ medium: fontMedium, large: fontLarge, xlarge: fontXLarge })[size].classList.add('active');
     previewText.style.fontSize = size === 'large' ? '18px' : size === 'xlarge' ? '21px' : '15px';
+    syncPressed();
   }
 
   /* ---- Tema ---- */
@@ -1352,6 +1461,7 @@ function endGame(won, message) {
 
     [themeDark, themeLight, themeContrast].forEach(b => b.classList.remove('active'));
     ({ dark: themeDark, light: themeLight, contrast: themeContrast })[theme].classList.add('active');
+    syncPressed();
   }
 
   /* ---- Daltonismo ---- */
@@ -1365,6 +1475,7 @@ function endGame(won, message) {
 
     [cbNone, cbDeutBtn, cbProtBtn, cbTritBtn].forEach(b => b.classList.remove('active'));
     ({ none: cbNone, deuteranopia: cbDeutBtn, protanopia: cbProtBtn, tritanopia: cbTritBtn })[mode].classList.add('active');
+    syncPressed();
   }
 
   /* ---- Init ---- */
@@ -1373,11 +1484,27 @@ function endGame(won, message) {
   applyCB(currentCB);
 
   /* ---- Eventos ---- */
-  btnOpen.addEventListener('click',  () => modal.classList.remove('hidden'));
-  btnClose.addEventListener('click', () => modal.classList.add('hidden'));
-  modal.addEventListener('click', e => { if (e.target === modal) modal.classList.add('hidden'); });
+  function openModal() {
+    modal.classList.remove('hidden');
+    fontMedium.parentElement.querySelector('.active')?.focus();   // foco dentro do diálogo
+  }
+  function closeModal() {
+    modal.classList.add('hidden');
+    btnOpen.focus();                                              // devolve o foco ao botão ♿
+  }
+  btnOpen.addEventListener('click',  openModal);
+  btnClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !modal.classList.contains('hidden')) modal.classList.add('hidden');
+    if (modal.classList.contains('hidden')) return;
+    if (e.key === 'Escape') { closeModal(); return; }
+    // Prende o Tab dentro do diálogo
+    if (e.key === 'Tab') {
+      const items = modal.querySelectorAll('button');
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
   });
 
   fontMedium.addEventListener('click', () => applyFont('medium'));
@@ -1417,6 +1544,7 @@ function endGame(won, message) {
   btnAudio.addEventListener('click', (e) => {
     e.stopPropagation();
     audioPanel.classList.toggle('hidden');
+    btnAudio.setAttribute('aria-expanded', String(!audioPanel.classList.contains('hidden')));
   });
 
   btnMute.addEventListener('click', () => {
@@ -1435,6 +1563,7 @@ function endGame(won, message) {
         !audioPanel.contains(e.target) &&
         e.target !== btnAudio) {
       audioPanel.classList.add('hidden');
+      btnAudio.setAttribute('aria-expanded', 'false');
     }
   });
 
@@ -1442,6 +1571,8 @@ function endGame(won, message) {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !audioPanel.classList.contains('hidden')) {
       audioPanel.classList.add('hidden');
+      btnAudio.setAttribute('aria-expanded', 'false');
+      btnAudio.focus();
     }
   });
 })();

@@ -9,8 +9,12 @@
 </head>
 <body>
 
+  <!-- ANUNCIADORES PARA LEITOR DE TELA (regiões aria-live, invisíveis na tela) -->
+  <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="announcer-alert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
   <!-- OVERLAY: GIRAR DISPOSITIVO PARA PAISAGEM (somente celulares em retrato) -->
-  <div id="rotate-overlay" class="rotate-overlay">
+  <div id="rotate-overlay" class="rotate-overlay" aria-hidden="true">
     <div class="rotate-content">
       <div class="rotate-icon">📱</div>
       <p>Gire seu dispositivo</p>
@@ -22,7 +26,7 @@
   <button id="btn-accessibility" class="a11y-fab" title="Acessibilidade" aria-label="Abrir menu de acessibilidade">♿</button>
 
   <!-- BOTÃO E PAINEL DE ÁUDIO FIXOS (sempre visíveis) -->
-  <button id="btn-audio" class="a11y-fab audio-fab" title="Áudio" aria-label="Abrir controle de áudio">🔊</button>
+  <button id="btn-audio" class="a11y-fab audio-fab" title="Áudio" aria-label="Abrir controle de áudio" aria-expanded="false" aria-controls="audio-panel">🔊</button>
   <div id="audio-panel" class="audio-panel hidden" role="dialog" aria-label="Controle de áudio">
     <button id="btn-mute" class="audio-mute-btn" title="Silenciar música" aria-label="Silenciar ou ativar música">🔊</button>
     <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="60" aria-label="Volume da música">
@@ -62,41 +66,41 @@
   <div id="accessibility-modal" class="accessibility-modal hidden" role="dialog" aria-modal="true" aria-labelledby="a11y-title">
     <div class="accessibility-panel">
       <div class="accessibility-header">
-        <span class="accessibility-icon">♿</span>
+        <span class="accessibility-icon" aria-hidden="true">♿</span>
         <h2 id="a11y-title">Acessibilidade</h2>
       </div>
 
       <!-- Fonte -->
       <div class="accessibility-section">
-        <label class="accessibility-label">Tamanho da Fonte</label>
-        <div class="font-size-controls">
-          <button class="font-btn active" id="font-medium" title="Médio">A</button>
-          <button class="font-btn" id="font-large"  title="Grande">A<sup>+</sup></button>
-          <button class="font-btn" id="font-xlarge" title="Extra Grande">A<sup>++</sup></button>
+        <div class="accessibility-label" id="lbl-font">Tamanho da Fonte</div>
+        <div class="font-size-controls" role="group" aria-labelledby="lbl-font">
+          <button class="font-btn active" id="font-medium" title="Médio" aria-label="Fonte média" aria-pressed="true">A</button>
+          <button class="font-btn" id="font-large"  title="Grande" aria-label="Fonte grande" aria-pressed="false">A<sup>+</sup></button>
+          <button class="font-btn" id="font-xlarge" title="Extra Grande" aria-label="Fonte extra grande" aria-pressed="false">A<sup>++</sup></button>
         </div>
-        <div class="font-preview">
+        <div class="font-preview" aria-hidden="true">
           <span id="font-preview-text">Pilote seu avião até o aeroporto!</span>
         </div>
       </div>
 
       <!-- Tema -->
       <div class="accessibility-section">
-        <label class="accessibility-label">Tema de Cores</label>
-        <div class="theme-options">
-          <button class="theme-opt-btn active" id="theme-dark"     title="Tema Escuro">🌙 Escuro</button>
-          <button class="theme-opt-btn"        id="theme-light"    title="Tema Claro">☀️ Claro</button>
-          <button class="theme-opt-btn"        id="theme-contrast" title="Alto Contraste">⬛ Alto Contraste</button>
+        <div class="accessibility-label" id="lbl-theme">Tema de Cores</div>
+        <div class="theme-options" role="group" aria-labelledby="lbl-theme">
+          <button class="theme-opt-btn active" id="theme-dark"     title="Tema Escuro" aria-pressed="true">🌙 Escuro</button>
+          <button class="theme-opt-btn"        id="theme-light"    title="Tema Claro" aria-pressed="false">☀️ Claro</button>
+          <button class="theme-opt-btn"        id="theme-contrast" title="Alto Contraste" aria-pressed="false">⬛ Alto Contraste</button>
         </div>
       </div>
 
       <!-- Daltonismo -->
       <div class="accessibility-section">
-        <label class="accessibility-label">Modo Daltonismo</label>
-        <div class="theme-options">
-          <button class="theme-opt-btn active" id="cb-none"          title="Sem filtro">Nenhum</button>
-          <button class="theme-opt-btn"        id="cb-deuteranopia-btn" title="Deficiência de verde">Deuteranopia</button>
-          <button class="theme-opt-btn"        id="cb-protanopia-btn"   title="Deficiência de vermelho">Protanopia</button>
-          <button class="theme-opt-btn"        id="cb-tritanopia-btn"   title="Deficiência de azul">Tritanopia</button>
+        <div class="accessibility-label" id="lbl-cb">Modo Daltonismo</div>
+        <div class="theme-options" role="group" aria-labelledby="lbl-cb">
+          <button class="theme-opt-btn active" id="cb-none"          title="Sem filtro" aria-pressed="true">Nenhum</button>
+          <button class="theme-opt-btn"        id="cb-deuteranopia-btn" title="Deficiência de verde" aria-pressed="false">Deuteranopia</button>
+          <button class="theme-opt-btn"        id="cb-protanopia-btn"   title="Deficiência de vermelho" aria-pressed="false">Protanopia</button>
+          <button class="theme-opt-btn"        id="cb-tritanopia-btn"   title="Deficiência de azul" aria-pressed="false">Tritanopia</button>
         </div>
       </div>
 
@@ -109,14 +113,14 @@
     <div class="stars-bg"></div>
     <div class="start-content">
       <div class="logo-area">
-        <div class="plane-logo">✈</div>
-        <h1>AERO RUN</h1>
+        <div class="plane-logo" aria-hidden="true">✈</div>
+        <h1 tabindex="-1">AERO RUN</h1>
         <p class="subtitle">Jogo Educativo de Computação</p>
       </div>
       <div class="start-info">
         <p>Pilote seu avião, responda perguntas e chegue ao aeroporto!</p>
       </div>
-      <div class="controls-hint">
+      <div class="controls-hint" role="group" aria-label="Controles do teclado">
         <span><kbd>W</kbd> / <kbd>↑</kbd> Subir</span>
         <span><kbd>S</kbd> / <kbd>↓</kbd> Descer</span>
         <span><kbd>D</kbd> / <kbd>→</kbd> Acelerar</span>
@@ -131,7 +135,7 @@
   <div id="screen-instructions" class="screen">
     <div class="stars-bg"></div>
     <div class="modal-box">
-      <h2>📋 Como Jogar</h2>
+      <h2 tabindex="-1"><span aria-hidden="true">📋</span> Como Jogar</h2>
       <ul>
         <li>🎮 Use <strong>W/S</strong> ou <strong>setas</strong> para subir e descer</li>
         <li>🚀 Use <strong>D/→</strong> para acelerar e <strong>A/←</strong> para frear</li>
@@ -154,57 +158,57 @@
   <!-- TELA DO JOGO -->
   <div id="screen-game" class="screen">
     <!-- HUD -->
-    <div id="hud">
+    <div id="hud" role="group" aria-label="Painel do jogo">
       <div class="hud-left">
         <span id="hud-phase">Fase 1</span>
       </div>
       <div class="hud-center">
         <div class="fuel-bar-wrap">
-          <span>⛽</span>
-          <div class="fuel-bar-track">
+          <span aria-hidden="true">⛽</span>
+          <div class="fuel-bar-track" role="progressbar" aria-label="Combustível" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
             <div id="fuel-bar" class="fuel-bar"></div>
           </div>
           <span id="fuel-text">100%</span>
         </div>
       </div>
       <div class="hud-right">
-        <span>⭐ <span id="score">0</span></span>
+        <span role="group" aria-label="Pontuação"><span aria-hidden="true">⭐</span> <span id="score">0</span></span>
       </div>
     </div>
 
     <!-- CANVAS DO JOGO -->
-    <canvas id="gameCanvas"></canvas>
+    <canvas id="gameCanvas" role="img" aria-label="Área do jogo: avião, pássaros e pontos de interrogação em movimento. Os avisos importantes são falados automaticamente; aperte I para ouvir o status."></canvas>
 
     <!-- OVERLAY DE PERGUNTA -->
-    <div id="question-overlay" class="hidden">
+    <div id="question-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="question-header question-text">
       <div class="question-box">
         <button id="btn-question-close" class="question-close-btn hidden" title="Fechar" aria-label="Fechar pergunta">✕</button>
-        <div class="question-header">❓ Pergunta de Computação</div>
+        <div class="question-header" id="question-header"><span aria-hidden="true">❓</span> Pergunta de Computação</div>
         <p id="question-text"></p>
-        <div id="question-options"></div>
-        <div id="question-feedback" class="hidden"></div>
+        <div id="question-options" role="group" aria-label="Alternativas"></div>
+        <div id="question-feedback" class="hidden" tabindex="-1"></div>
         <button id="btn-question-continue" class="btn-primary question-continue-btn hidden">CONTINUAR</button>
       </div>
     </div>
 
     <!-- OVERLAY DE PAUSA -->
-    <div id="pause-overlay" class="hidden">
+    <div id="pause-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div class="modal-box">
-        <h2>⏸ Pausado</h2>
+        <h2 id="pause-title"><span aria-hidden="true">⏸</span> Jogo pausado</h2>
         <button id="btn-resume" class="btn-primary">CONTINUAR</button>
         <button id="btn-quit" class="btn-secondary">SAIR</button>
       </div>
     </div>
 
-    <button id="btn-pause" title="Pausar">⏸</button>
+    <button id="btn-pause" title="Pausar" aria-label="Pausar o jogo">⏸</button>
   </div>
 
   <!-- TELA DE FIM DE JOGO -->
   <div id="screen-gameover" class="screen">
     <div class="stars-bg"></div>
     <div class="modal-box">
-      <div id="gameover-icon">💥</div>
-      <h2 id="gameover-title">Fim de Voo!</h2>
+      <div id="gameover-icon" aria-hidden="true">💥</div>
+      <h2 id="gameover-title" tabindex="-1">Fim de Voo!</h2>
       <p id="gameover-msg"></p>
       <div id="final-score-area">
         <span class="final-score-label">Pontuação Final</span>
