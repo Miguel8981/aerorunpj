@@ -1,14 +1,78 @@
 // game.js — Aero Run v3 (fases por acertos + tempo limite)
 
 // ─── ANUNCIADOR PARA LEITOR DE TELA ────────────────────────────────────────
-// Escreve texto numa região aria-live invisível. O canvas não é lido pelo
-// leitor de tela, então tudo que o jogador precisa saber passa por aqui.
-// urgent=true usa a região "assertive" (interrompe a fala atual).
-function announce(msg, urgent) {
-  const el = document.getElementById(urgent ? 'announcer-alert' : 'announcer');
+// O canvas não é lido pelo leitor de tela, então os eventos do jogo passam por
+// regiões aria-live invisíveis. Para o leitor não se atropelar:
+//  • mensagens normais entram numa fila (máx. 2) e esperam a anterior terminar
+//  • mensagens urgentes limpam a fila e falam na hora (região "assertive")
+//  • a mesma mensagem não se repete em menos de 4 segundos
+const AnnounceQ = { queue: [], freeAt: 0, timer: null, lastMsg: '', lastAt: 0 };
+
+function writeLive(id, msg) {
+  const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = '';                       // limpa para repetir mensagens iguais
+  el.textContent = '';                         // limpa para repetir textos iguais
   setTimeout(() => { el.textContent = msg; }, 60);
+}
+function speakNow(id, msg) {
+  writeLive(id, msg);
+  // estimativa do tempo de fala (~15 caracteres por segundo)
+  AnnounceQ.freeAt = performance.now() + 500 + msg.length * 65;
+}
+function pumpAnnouncements() {
+  if (AnnounceQ.timer || !AnnounceQ.queue.length) return;
+  const wait = Math.max(0, AnnounceQ.freeAt - performance.now());
+  AnnounceQ.timer = setTimeout(() => {
+    AnnounceQ.timer = null;
+    const msg = AnnounceQ.queue.shift();
+    if (msg) speakNow('announcer', msg);
+    pumpAnnouncements();
+  }, wait);
+}
+function announce(msg, urgent) {
+  const now = performance.now();
+  if (msg === AnnounceQ.lastMsg && now - AnnounceQ.lastAt < 4000) return;   // evita repetição
+  AnnounceQ.lastMsg = msg;
+  AnnounceQ.lastAt  = now;
+  if (urgent) {
+    AnnounceQ.queue.length = 0;
+    clearTimeout(AnnounceQ.timer);
+    AnnounceQ.timer = null;
+    speakNow('announcer-alert', msg);
+    return;
+  }
+  AnnounceQ.queue.push(msg);
+  if (AnnounceQ.queue.length > 2) AnnounceQ.queue.shift();                   // mantém só as mais recentes
+  pumpAnnouncements();
+}
+// Descarta o que está na fila (usado ao abrir pergunta, pausa etc.)
+function clearAnnouncements() {
+  AnnounceQ.queue.length = 0;
+  clearTimeout(AnnounceQ.timer);
+  AnnounceQ.timer = null;
+  ['announcer', 'announcer-alert'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+}
+
+// ─── FOCO E "INERT" ────────────────────────────────────────────────────────
+// Durante o voo o foco fica no canvas (dentro de role="application"), assim o
+// leitor de tela deixa W/A/S/D e as setas chegarem ao jogo.
+function focusGame() {
+  const c = document.getElementById('gameCanvas');
+  if (c && screens.game && screens.game.classList.contains('active')) c.focus({ preventScroll: true });
+}
+// "inert" tira o elemento da leitura e do foco: o leitor não lê o fundo
+// enquanto um diálogo (pergunta, pausa, acessibilidade) está aberto.
+function setInert(els, on) {
+  els.forEach(el => {
+    if (!el) return;
+    if (on) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+  });
+}
+function gameBackgroundEls() {
+  return [document.getElementById('hud'), document.getElementById('gameCanvas'), document.getElementById('btn-pause')];
 }
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
@@ -181,12 +245,12 @@ function showScreen(name) {
 // Na tela do jogo não há título: só tira o foco do botão que foi clicado.
 function focusScreenHeading(name) {
   setTimeout(() => {
-    const target = name === 'start'        ? document.querySelector('#screen-start h1')
-                 : name === 'instructions' ? document.querySelector('#screen-instructions h2')
+    const target = name === 'start'        ? document.querySelector('#screen-start .start-content')
+                 : name === 'instructions' ? document.querySelector('#screen-instructions .modal-box')
                  : name === 'gameover'     ? document.getElementById('gameover-title')
                  : null;
     if (target) target.focus({ preventScroll: true });
-    else if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    else if (name === 'game') focusGame();
   }, 80);
 }
 // ─── BUTTONS ───────────────────────────────────────────────────────────────
@@ -198,7 +262,12 @@ document.getElementById('btn-instructions').addEventListener('click', () => show
 document.getElementById('btn-back').addEventListener('click', () => showScreen('start'));
 document.getElementById('btn-pause').addEventListener('click', togglePause);
 document.getElementById('btn-resume').addEventListener('click', togglePause);
-document.getElementById('btn-quit').addEventListener('click', () => { cancelAnimationFrame(state.animFrame); showScreen('start'); });
+document.getElementById('btn-quit').addEventListener('click', () => {
+  cancelAnimationFrame(state.animFrame);
+  setInert(gameBackgroundEls().concat([questionOverlay]), false);
+  clearAnnouncements();
+  showScreen('start');
+});
 document.getElementById('btn-restart').addEventListener('click', startGame);
 document.getElementById('btn-menu').addEventListener('click', () => showScreen('start'));
 btnQuestionContinue.addEventListener('click', closeQuestion);
@@ -215,6 +284,9 @@ document.addEventListener('keydown', e => {
   if (state.questionPending) handleQuestionKeydown(e);
 });
 document.addEventListener('keyup', e => { state.keys[e.code] = false; });
+// Se a janela perder o foco (ou o leitor de tela trocar de modo), solta as teclas
+window.addEventListener('blur', () => { state.keys = {}; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) state.keys = {}; });
 
 // ─── START ─────────────────────────────────────────────────────────────────
 function startGame() {
@@ -223,13 +295,15 @@ function startGame() {
   state.running  = true;
   state.lastTick = performance.now();
   pauseOverlay.classList.add('hidden');
+  setInert(gameBackgroundEls().concat([questionOverlay]), false);
+  clearAnnouncements();
   resizeCanvas();
   state.planeY = canvas.height / 2;
   spawnInitialClouds();
   showScreen('game');
   applyPhaseTheme(0);
   showPhaseBanner(CONFIG.phases[0].name, CONFIG.phases[0].description);
-  announce(`Jogo iniciado. ${CONFIG.phases[0].name}. ${CONFIG.phases[0].description} Use W e S para subir e descer, A e D para frear e acelerar. Aperte I para ouvir o status.`, true);
+  announce(`${CONFIG.phases[0].name}. ${CONFIG.phases[0].description} Aperte I para ouvir o status.`, true);
   updatePhaseHUD();
   loop();
 }
@@ -241,7 +315,8 @@ function updatePhaseHUD() {
   const correct  = state.phaseCorrect;
   const needed   = pc.correctNeeded;
   // Mostra: "Fase 1 | ✅ 1/3 | ⏱ 38s"
-  hudPhase.textContent = `Fase ${state.phase + 1}  ✅ ${correct}/${needed}  ⏱ ${timeLeft}s`;
+  const phaseTxt = `Fase ${state.phase + 1}  ✅ ${correct}/${needed}  ⏱ ${timeLeft}s`;
+  if (hudPhase.textContent !== phaseTxt) hudPhase.textContent = phaseTxt;
 }
 
 // Fala o status atual (tecla I)
@@ -249,8 +324,8 @@ function announceStatus() {
   const pc = CONFIG.phases[state.phase];
   announce(
     `Fase ${state.phase + 1}. ${state.phaseCorrect} de ${pc.correctNeeded} acertos. ` +
-    `${Math.ceil(state.phaseTimeLeft)} segundos restantes. ` +
-    `Combustível ${Math.round(state.fuel)} por cento. ${state.score} pontos.`,
+    `${Math.ceil(state.phaseTimeLeft)} segundos. ` +
+    `Combustível ${Math.round(state.fuel)}. ${state.score} pontos.`,
     true
   );
 }
@@ -308,7 +383,7 @@ function advancePhase() {
   `;
   overlay.setAttribute('aria-hidden', 'true');
   document.getElementById('screen-game').appendChild(overlay);
-  announce(`Fase ${fromPhase + 1} completa! Pontuação ${state.score}. Preparando a fase ${toPhase + 1}: ${phaseNames[toPhase]}.`, true);
+  announce(`Fase ${fromPhase + 1} completa! ${state.score} pontos.`, true);
 
   // Sequência de animação
   const $ = s => overlay.querySelector(s);
@@ -346,7 +421,8 @@ function advancePhase() {
         showPhaseBanner(pc.name, pc.description);
         state.fuelWarnLevel = 0;
         state.timeWarned = {};
-        announce(`${pc.name}. ${pc.description} Combustível ${Math.round(state.fuel)} por cento.`, true);
+        announce(`${pc.name}. ${pc.description}`, true);
+        focusGame();
       }, 600);
     }, 3800);
   });
@@ -411,7 +487,7 @@ function update() {
   [30, 10].forEach(t => {
     if (state.phaseTimeLeft <= t && !state.timeWarned[t] && CONFIG.phases[state.phase].timeLimit > t) {
       state.timeWarned[t] = true;
-      announce(`Faltam ${t} segundos. ${state.phaseCorrect} de ${phaseConf.correctNeeded} acertos.`);
+      announce(`Faltam ${t} segundos.`);
     }
   });
 
@@ -484,7 +560,7 @@ function update() {
     // Dica de posição para leitor de tela
     const dy = state.qmarks[0].y - state.planeY;
     const where = dy < -40 ? 'acima de você' : dy > 40 ? 'abaixo de você' : 'na sua altura';
-    announce(`Ponto de interrogação à frente, ${where}.`);
+    announce(`Interrogação ${where}.`);
   }
 
   state.birdFlap  += 0.15;
@@ -510,7 +586,10 @@ function update() {
       state.fuel  = Math.max(0, state.fuel - birdFuelLoss);
       spawnParticles(planeX, state.planeY, '#ff6b35');
       showScorePopup(planeX, state.planeY, `-${birdScoreLoss}`);
-      announce(`Colisão com pássaro! Menos ${birdScoreLoss} pontos. Combustível ${Math.round(state.fuel)} por cento.`, true);
+      if (performance.now() - (state.lastBirdAnnounce || 0) > 1500) {
+        state.lastBirdAnnounce = performance.now();
+        announce(`Pássaro! Menos ${birdScoreLoss}.`, true);
+      }
       updateHUD();
     }
   });
@@ -537,7 +616,8 @@ function collides(ax, ay, aw, ah, bx, by, bw, bh) {
 function updateHUD() {
   const pct = Math.max(0, Math.min(100, state.fuel));
   fuelBar.style.width = pct + '%';
-  fuelText.textContent = Math.round(pct) + '%';
+  const fuelTxt = Math.round(pct) + '%';
+  if (fuelText.textContent !== fuelTxt) fuelText.textContent = fuelTxt;
   fuelBar.className = 'fuel-bar' + (pct < 25 ? ' low' : pct < 55 ? ' medium' : '');
   if (state.phase === 1) {
     fuelBar.style.background = pct < 25
@@ -548,7 +628,7 @@ function updateHUD() {
   } else {
     fuelBar.style.background = '';
   }
-  scoreEl.textContent = state.score;
+  if (scoreEl.textContent !== String(state.score)) scoreEl.textContent = state.score;
 
   // Acessibilidade: valor da barra de combustível para leitores de tela
   const rounded = Math.round(pct);
@@ -559,10 +639,10 @@ function updateHUD() {
   if (state.running) {
     if (pct < 10 && state.fuelWarnLevel < 2) {
       state.fuelWarnLevel = 2;
-      announce(`Atenção! Combustível crítico: ${rounded} por cento.`, true);
+      announce(`Combustível crítico: ${rounded}.`, true);
     } else if (pct < 25 && state.fuelWarnLevel < 1) {
       state.fuelWarnLevel = 1;
-      announce(`Combustível baixo: ${rounded} por cento.`, true);
+      announce(`Combustível baixo: ${rounded}.`, true);
     } else if (pct >= 35 && state.fuelWarnLevel > 0) {
       state.fuelWarnLevel = 0;   // reabasteceu: os avisos voltam a valer
     }
@@ -1165,6 +1245,8 @@ function showQuestion() {
     questionOpts.appendChild(btn);
   });
   questionOverlay.classList.remove('hidden');
+  clearAnnouncements();                    // nada falando por cima da pergunta
+  setInert(gameBackgroundEls(), true);     // o leitor não lê o HUD/canvas ao fundo
 
   // Uma alternativa já começa destacada, permitindo responder só com o teclado
   updateOptionSelection();
@@ -1253,7 +1335,8 @@ function closeQuestion() {
   questionOverlay.classList.add('hidden');
   hideQuestionActions();
   state.questionPending = false;
-  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+  setInert(gameBackgroundEls(), false);
+  focusGame();                             // sem isso o foco vai ao body e o leitor volta a bloquear as teclas
 
   const shouldAdvance = state.qShouldAdvance;
   state.qShouldAdvance = false;
@@ -1340,10 +1423,17 @@ function togglePause() {
   // Reajusta lastTick ao retomar para não penalizar o tempo
   if (!state.paused) state.lastTick = performance.now();
   pauseOverlay.classList.toggle('hidden', !state.paused);
+  const behind = gameBackgroundEls().concat([questionOverlay]);
   if (state.paused) {
+    clearAnnouncements();
+    setInert(behind, true);
     document.getElementById('btn-resume').focus({ preventScroll: true });
   } else {
-    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    setInert(behind, false);
+    // Se havia uma pergunta aberta, o foco volta para ela; senão, para o canvas
+    if (state.questionPending && !state.qAnswered) updateOptionSelection();
+    else if (state.questionPending) questionFeedback.focus({ preventScroll: true });
+    else focusGame();
     announce('Jogo retomado.');
   }
 }
@@ -1363,6 +1453,8 @@ function pickLoseTitle() {
 // ─── END GAME ──────────────────────────────────────────────────────────────
 function endGame(won, message) {
   state.running = false;
+  setInert(gameBackgroundEls().concat([questionOverlay]), false);
+  clearAnnouncements();
   cancelAnimationFrame(state.animFrame);
   document.getElementById('gameover-icon').textContent  = won ? '🛬' : '🔄';
   document.getElementById('gameover-title').textContent = won ? 'Pouso Perfeito!' : pickLoseTitle();
@@ -1484,12 +1576,16 @@ function endGame(won, message) {
   applyCB(currentCB);
 
   /* ---- Eventos ---- */
+  const behindModal = () => Array.from(document.querySelectorAll('.screen'))
+    .concat([btnOpen, document.getElementById('btn-audio'), document.getElementById('audio-panel')]);
   function openModal() {
+    setInert(behindModal(), true);                                // leitor não lê o que está atrás
     modal.classList.remove('hidden');
     fontMedium.parentElement.querySelector('.active')?.focus();   // foco dentro do diálogo
   }
   function closeModal() {
     modal.classList.add('hidden');
+    setInert(behindModal(), false);
     btnOpen.focus();                                              // devolve o foco ao botão ♿
   }
   btnOpen.addEventListener('click',  openModal);
@@ -1596,3 +1692,6 @@ function endGame(won, message) {
   window.addEventListener('resize', checkOrientation);
   window.addEventListener('orientationchange', checkOrientation);
 })();
+
+// Ao abrir a página, leva o foco à tela inicial para o leitor ler o conteúdo dela
+window.addEventListener('load', () => focusScreenHeading('start'));

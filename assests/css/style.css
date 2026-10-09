@@ -1782,3 +1782,9 @@ h2[tabindex="-1"]:focus,
 #question-feedback[tabindex="-1"]:focus {
   outline: none;
 }
+
+/* Contêineres de tela recebem foco por script (para o leitor ler a tela): sem contorno */
+.start-content[tabindex="-1"]:focus,
+.modal-box[tabindex="-1"]:focus {
+  outline: none;
+}
