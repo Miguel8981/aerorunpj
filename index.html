@@ -137,7 +137,7 @@
         <li><span aria-hidden="true">✅</span> Acertar = +5 pontos | ❌ Errar = -5 pontos</li>
         <li><span aria-hidden="true">🏁</span> Chegue ao aeroporto com combustível suficiente!</li>
         <li><span aria-hidden="true">🔊</span> Leitor de tela: durante o voo, aperte <strong>I</strong> para ouvir fase, acertos, tempo, combustível e pontos</li>
-        <li><span aria-hidden="true">⌨️</span> Se as teclas W/S/A/D não responderem com o NVDA, aperte <strong>Insert + Espaço</strong> para entrar no modo de foco</li>
+        <li><span aria-hidden="true">⌨️</span> Se as teclas W/S/A/D ou as setas não responderem: no NVDA aperte <strong>Insert + Espaço</strong>; no Narrador aperte <strong>Caps Lock + Espaço</strong></li>
       </ul>
       <h3>🏅 Medalhas</h3>
       <div class="medals-info">
@@ -151,7 +151,7 @@
   </div>
 
   <!-- TELA DO JOGO -->
-  <div id="screen-game" class="screen" role="application" aria-label="Aero Run, tela de jogo">
+  <div id="screen-game" class="screen" role="region" aria-label="Aero Run, tela de jogo">
     <!-- HUD -->
     <div id="hud" role="group" aria-label="Painel do jogo">
       <div class="hud-left">
@@ -172,17 +172,19 @@
     </div>
 
     <!-- CANVAS DO JOGO -->
-    <canvas id="gameCanvas" tabindex="0" aria-label="Área de voo. Use W e S para subir e descer, A e D para frear e acelerar, I para ouvir o status, Esc para pausar."></canvas>
+    <canvas id="gameCanvas" tabindex="0" role="application" aria-label="Área de voo. Use W e S para subir e descer, A e D para frear e acelerar, I para ouvir o status, Esc para pausar."></canvas>
 
     <!-- OVERLAY DE PERGUNTA -->
     <div id="question-overlay" class="hidden" role="dialog" aria-modal="true" aria-labelledby="question-header" aria-describedby="question-text">
-      <div class="question-box">
+      <!-- role="application": o leitor de tela (NVDA/JAWS/Narrador) entra no modo foco
+           e deixa W/S, setas e Enter chegarem ao jogo para escolher a alternativa -->
+      <div class="question-box" role="application" aria-labelledby="question-header" aria-describedby="question-text">
         <button id="btn-question-close" class="question-close-btn hidden" title="Fechar" aria-label="Fechar pergunta">✕</button>
         <div class="question-header" id="question-header"><span aria-hidden="true">❓</span> Pergunta de Computação</div>
         <p id="question-text"></p>
         <div id="question-options" role="group" aria-label="Alternativas"></div>
-        <div id="question-feedback" class="hidden" tabindex="-1"></div>
-        <button id="btn-question-continue" class="btn-primary question-continue-btn hidden">CONTINUAR</button>
+        <div id="question-feedback" class="hidden"></div>
+        <button id="btn-question-continue" class="btn-primary question-continue-btn hidden" aria-describedby="question-feedback">CONTINUAR</button>
       </div>
     </div>
 
@@ -226,8 +228,8 @@
     <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="60" aria-label="Volume da música">
   </div>
 
-  <script src="assests/js/questions.js?v=4"></script>
-  <script src="assests/js/audio.js?v=4"></script>
-  <script src="assests/js/game.js?v=4"></script>
+  <script src="assests/js/questions.js?v=5"></script>
+  <script src="assests/js/audio.js?v=5"></script>
+  <script src="assests/js/game.js?v=5"></script>
 </body>
 </html>

@@ -71,6 +71,31 @@ function setInert(els, on) {
     if (on) el.setAttribute('inert', ''); else el.removeAttribute('inert');
   });
 }
+// ─── VIGIA DE TECLAS ───────────────────────────────────────────────────────
+// Se o leitor de tela estiver no modo navegação, ele engole as teclas e o jogo
+// não recebe nada. Se passar um tempo de voo sem nenhuma tecla chegar, o jogo
+// avisa como desligar esse modo (NVDA: Insert+Espaço; Narrador: Caps Lock+Espaço).
+let lastKeyAt = 0, gameStartAt = 0, keyWatchTimer = null, keyWatchTries = 0;
+document.addEventListener('keydown', () => { lastKeyAt = performance.now(); }, true);
+
+function checkKeyWatchdog() {
+  if (!state.running || state.paused || state.questionPending) return;   // só vale durante o voo
+  if (lastKeyAt > gameStartAt) { stopKeyWatchdog(); return; }            // as teclas chegaram: tudo certo
+  if (keyWatchTries >= 3) { stopKeyWatchdog(); return; }
+  keyWatchTries++;
+  announce('As teclas não estão chegando ao jogo. No NVDA, aperte Insert mais Espaço. No Narrador, aperte Caps Lock mais Espaço.', true);
+}
+function startKeyWatchdog() {
+  stopKeyWatchdog();
+  gameStartAt = performance.now();
+  keyWatchTries = 0;
+  keyWatchTimer = setInterval(checkKeyWatchdog, 6000);
+}
+function stopKeyWatchdog() {
+  clearInterval(keyWatchTimer);
+  keyWatchTimer = null;
+}
+
 function gameBackgroundEls() {
   return [document.getElementById('hud'), document.getElementById('gameCanvas'), document.getElementById('btn-pause')];
 }
@@ -264,6 +289,7 @@ document.getElementById('btn-pause').addEventListener('click', togglePause);
 document.getElementById('btn-resume').addEventListener('click', togglePause);
 document.getElementById('btn-quit').addEventListener('click', () => {
   cancelAnimationFrame(state.animFrame);
+  stopKeyWatchdog();
   setInert(gameBackgroundEls().concat([questionOverlay]), false);
   clearAnnouncements();
   showScreen('start');
@@ -277,13 +303,29 @@ btnQuestionClose.addEventListener('click', closeQuestion);
 document.addEventListener('keydown', e => {
   state.keys[e.code] = true;
   if (e.code === 'Escape' && state.running) togglePause();
+  // Fora do voo (menus, pausa, acessibilidade, volume) o teclado funciona normalmente
+  const inFlight = screens.game.classList.contains('active') && !state.paused &&
+                   (state.running || state.questionPending);
+  if (!inFlight) return;
   // Tecla I: fala o status do jogo (leitor de tela)
-  if (e.code === 'KeyI' && state.running && !state.paused && !state.questionPending) announceStatus();
+  if (e.code === 'KeyI' && state.running && !state.questionPending) announceStatus();
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyS','KeyA','KeyD','Space'].includes(e.code)) e.preventDefault();
   // Navegação por teclado nas alternativas da pergunta (W/S, ↑/↓, Enter)
   if (state.questionPending) handleQuestionKeydown(e);
 });
 document.addEventListener('keyup', e => { state.keys[e.code] = false; });
+// Se o foco escapar do canvas para o "nada" (body) durante o voo, ele volta.
+// Com o foco no body o leitor de tela sai do modo foco e engole as teclas.
+canvas.addEventListener('blur', e => {
+  if (e.relatedTarget) return;   // foi para um botão de propósito (Tab, pausa...)
+  setTimeout(() => {
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (lost && state.running && !state.paused && !state.questionPending) focusGame();
+  }, 0);
+});
+document.getElementById('screen-game').addEventListener('mousedown', () => {
+  if (state.running && !state.paused && !state.questionPending) setTimeout(focusGame, 0);
+});
 // Se a janela perder o foco (ou o leitor de tela trocar de modo), solta as teclas
 window.addEventListener('blur', () => { state.keys = {}; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) state.keys = {}; });
@@ -304,6 +346,7 @@ function startGame() {
   applyPhaseTheme(0);
   showPhaseBanner(CONFIG.phases[0].name, CONFIG.phases[0].description);
   announce(`${CONFIG.phases[0].name}. ${CONFIG.phases[0].description} Aperte I para ouvir o status.`, true);
+  startKeyWatchdog();
   updatePhaseHUD();
   loop();
 }
@@ -1246,10 +1289,12 @@ function showQuestion() {
   });
   questionOverlay.classList.remove('hidden');
   clearAnnouncements();                    // nada falando por cima da pergunta
-  setInert(gameBackgroundEls(), true);     // o leitor não lê o HUD/canvas ao fundo
 
-  // Uma alternativa já começa destacada, permitindo responder só com o teclado
+  // Uma alternativa já começa destacada (e com foco), permitindo responder só com o teclado.
+  // O foco entra na pergunta ANTES de travar o fundo: se o canvas focado virar "inert"
+  // primeiro, o foco cai no body e o leitor de tela volta a bloquear as teclas.
   updateOptionSelection();
+  setInert(gameBackgroundEls(), true);     // o leitor não lê o HUD/canvas ao fundo
 
   // Estilo da caixa por fase
   const qbox    = document.querySelector('.question-box');
@@ -1323,10 +1368,10 @@ function answerQuestion(idx, btn) {
   // A pergunta permanece aberta — o jogador decide quando continuar
   showQuestionActions();
 
-  // Leitor de tela: o foco vai para o feedback, que é lido na hora.
-  // Enter (ou Tab até o botão Continuar) fecha a pergunta.
+  // Leitor de tela: o foco vai para o botão Continuar, que lê o feedback
+  // (aria-describedby). Enter fecha a pergunta.
   questionFeedback.textContent += ' Aperte Enter para continuar.';
-  questionFeedback.focus({ preventScroll: true });
+  btnQuestionContinue.focus({ preventScroll: true });
 }
 
 // Fecha a pergunta manualmente (botão "Continuar" ou "X" / Enter após responder)
@@ -1426,13 +1471,13 @@ function togglePause() {
   const behind = gameBackgroundEls().concat([questionOverlay]);
   if (state.paused) {
     clearAnnouncements();
-    setInert(behind, true);
     document.getElementById('btn-resume').focus({ preventScroll: true });
+    setInert(behind, true);
   } else {
     setInert(behind, false);
     // Se havia uma pergunta aberta, o foco volta para ela; senão, para o canvas
     if (state.questionPending && !state.qAnswered) updateOptionSelection();
-    else if (state.questionPending) questionFeedback.focus({ preventScroll: true });
+    else if (state.questionPending) btnQuestionContinue.focus({ preventScroll: true });
     else focusGame();
     announce('Jogo retomado.');
   }
@@ -1453,6 +1498,7 @@ function pickLoseTitle() {
 // ─── END GAME ──────────────────────────────────────────────────────────────
 function endGame(won, message) {
   state.running = false;
+  stopKeyWatchdog();
   setInert(gameBackgroundEls().concat([questionOverlay]), false);
   clearAnnouncements();
   cancelAnimationFrame(state.animFrame);
