@@ -1788,3 +1788,9 @@ h2[tabindex="-1"]:focus,
 .modal-box[tabindex="-1"]:focus {
   outline: none;
 }
+
+/* Âncoras de foco por script (voo e pergunta): o foco não precisa de contorno */
+#game-focus:focus,
+#question-overlay:focus {
+  outline: none;
+}
