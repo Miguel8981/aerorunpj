@@ -86,7 +86,7 @@
     color: var(--text-dim);
   }
 
-  @media (max-width: 900px) and (orientation: portrait) {
+  @media (max-width: 900px) and (orientation: portrait) and (hover: none) and (pointer: coarse) {
     .rotate-overlay {
       display: flex;
       align-items: center;
@@ -1793,4 +1793,149 @@ h2[tabindex="-1"]:focus,
 #game-focus:focus,
 #question-overlay:focus {
   outline: none;
+}
+
+/* ===========================
+   ADAPTAÇÃO PARA CELULARES E TABLETS
+   =========================== */
+html, body {
+  min-width: 320px;
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+body {
+  height: 100vh;
+  height: 100dvh;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+#screen-game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.touch-controls {
+  display: none;
+}
+.touch-control {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(255,255,255,.38);
+  border-radius: 15px;
+  width: clamp(48px, 8vw, 66px);
+  height: clamp(48px, 8vw, 66px);
+  background: rgba(5, 15, 40, .62);
+  color: #fff;
+  font: 700 22px 'Exo 2', sans-serif;
+  box-shadow: 0 3px 12px rgba(0,0,0,.25);
+  backdrop-filter: blur(5px);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  user-select: none;
+}
+.touch-control.pressed,
+.touch-control:active {
+  background: rgba(0, 212, 255, .55);
+  border-color: var(--accent);
+  transform: scale(.95);
+}
+@media (hover: none) and (pointer: coarse) {
+  .touch-controls {
+    position: absolute;
+    z-index: 12;
+    left: 0;
+    right: 0;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 max(14px, env(safe-area-inset-left)) 0 max(14px, env(safe-area-inset-right));
+    pointer-events: none;
+  }
+  .touch-movement,
+  .touch-speed {
+    display: flex;
+    gap: 9px;
+    pointer-events: auto;
+  }
+  .touch-control { pointer-events: auto; }
+}
+@media (max-width: 900px) {
+  #hud {
+    gap: 7px;
+    padding: max(6px, env(safe-area-inset-top)) 10px 6px;
+  }
+  .hud-left, .hud-right {
+    min-width: 0;
+    font-size: clamp(9px, 2vw, 12px);
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+  .hud-right { font-size: clamp(11px, 2.2vw, 14px); }
+  .fuel-bar-wrap { gap: 5px; font-size: 11px; }
+  .fuel-bar-track { width: clamp(64px, 18vw, 150px); height: 10px; }
+  #fuel-text { min-width: 30px; font-size: 10px; }
+  #btn-pause {
+    top: calc(env(safe-area-inset-top) + 48px);
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    z-index: 15;
+  }
+  .question-box {
+    width: min(94%, 540px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    padding: 20px 18px;
+    gap: 10px;
+  }
+  #question-text { line-height: 1.35; }
+  .option-btn { min-height: 42px; }
+  .audio-panel {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(76px, env(safe-area-inset-bottom));
+  }
+  .a11y-fab { min-width: 44px; min-height: 44px; }
+}
+@media (max-width: 600px) and (orientation: landscape) {
+  #hud { padding-top: max(4px, env(safe-area-inset-top)); padding-bottom: 4px; }
+  .fuel-bar-track { width: clamp(58px, 15vw, 110px); }
+  .question-box { padding: 14px 16px; gap: 7px; }
+  .question-header { font-size: 13px; }
+  #question-text { font-size: 14px; }
+  .option-btn { padding: 8px 12px; font-size: 13px; }
+  #question-feedback { font-size: 13px; }
+  .touch-controls { bottom: max(7px, env(safe-area-inset-bottom)); }
+  .touch-control {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    font-size: 19px;
+  }
+}
+@media (max-height: 430px) and (orientation: landscape) {
+  #screen-start .start-content,
+  #screen-instructions .modal-box,
+  #screen-gameover .modal-box {
+    max-height: 94dvh;
+    overflow-y: auto;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 8px;
+  }
+  #screen-start .plane-logo { font-size: 30px; }
+  #screen-start h1 { font-size: 34px; }
+  #screen-instructions .modal-box ul { gap: 5px; }
+  #screen-instructions .modal-box ul li { padding: 5px 8px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-icon { animation: none !important; }
 }

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Aero Run – Jogo Educativo</title>
   <link rel="stylesheet" href="assests/css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
@@ -178,6 +178,18 @@
     <div id="game-focus" class="sr-only" tabindex="0" role="application" aria-label="Controles de voo. W e S sobem e descem. A e D freiam e aceleram. I fala o status. Esc pausa."></div>
     <canvas id="gameCanvas" aria-hidden="true"></canvas>
 
+    <!-- Controles touch: aparecem apenas em dispositivos com tela touch -->
+    <div id="touch-controls" class="touch-controls" aria-label="Controles de voo">
+      <div class="touch-movement">
+        <button type="button" class="touch-control" data-control="up" aria-label="Subir">▲</button>
+        <button type="button" class="touch-control" data-control="down" aria-label="Descer">▼</button>
+      </div>
+      <div class="touch-speed">
+        <button type="button" class="touch-control" data-control="brake" aria-label="Frear">−</button>
+        <button type="button" class="touch-control" data-control="accelerate" aria-label="Acelerar">+</button>
+      </div>
+    </div>
+
     <!-- OVERLAY DE PERGUNTA -->
     <div id="question-overlay" class="hidden" role="group" aria-labelledby="question-header">
       <div class="question-box">
@@ -232,7 +244,7 @@
   </div>
 
   <script src="assests/js/questions.js?v=4"></script>
-  <script src="assests/js/audio.js?v=4"></script>
-  <script src="assests/js/game.js?v=7"></script>
+  <script src="assests/js/audio.js?v=5"></script>
+  <script src="assests/js/game.js?v=8"></script>
 </body>
 </html>

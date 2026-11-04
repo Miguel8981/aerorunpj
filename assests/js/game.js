@@ -324,6 +324,63 @@ document.addEventListener('keydown', e => {
   if (state.questionPending) handleQuestionKeydown(e);
 });
 document.addEventListener('keyup', e => { state.keys[e.code] = false; });
+
+// ─── CONTROLES TOUCH ───────────────────────────────────────────────────────
+// Os botões virtuais reutilizam as mesmas teclas da versão desktop.
+(function setupTouchControls() {
+  const controls = document.getElementById('touch-controls');
+  if (!controls) return;
+
+  const keyByControl = {
+    up: 'ArrowUp',
+    down: 'ArrowDown',
+    brake: 'ArrowLeft',
+    accelerate: 'ArrowRight',
+  };
+
+  function releaseAllTouchKeys() {
+    Object.values(keyByControl).forEach(key => { state.keys[key] = false; });
+    controls.querySelectorAll('.touch-control').forEach(button => {
+      button.classList.remove('pressed');
+      button.setAttribute('aria-pressed', 'false');
+    });
+  }
+
+  controls.querySelectorAll('.touch-control').forEach(button => {
+    const key = keyByControl[button.dataset.control];
+    if (!key) return;
+
+    button.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      if (!state.running || state.paused || state.questionPending) return;
+      state.keys[key] = true;
+      button.classList.add('pressed');
+      button.setAttribute('aria-pressed', 'true');
+      try { button.setPointerCapture(event.pointerId); } catch (_) {}
+    });
+
+    const release = event => {
+      event.preventDefault();
+      state.keys[key] = false;
+      button.classList.remove('pressed');
+      button.setAttribute('aria-pressed', 'false');
+    };
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', () => {
+      state.keys[key] = false;
+      button.classList.remove('pressed');
+      button.setAttribute('aria-pressed', 'false');
+    });
+    button.addEventListener('contextmenu', event => event.preventDefault());
+  });
+
+  window.addEventListener('blur', releaseAllTouchKeys);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) releaseAllTouchKeys();
+  });
+})();
+
 // Se a janela perder o foco (ou o leitor de tela trocar de modo), solta as teclas
 window.addEventListener('blur', () => { state.keys = {}; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) state.keys = {}; });
@@ -471,10 +528,32 @@ function advancePhase() {
 
 // ─── RESIZE ────────────────────────────────────────────────────────────────
 function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // Usa a área realmente visível; visualViewport acompanha barras do navegador
+  // que aparecem/desaparecem em celulares Android.
+  const viewport = window.visualViewport;
+  const width = Math.max(320, Math.round(viewport ? viewport.width : document.documentElement.clientWidth || window.innerWidth));
+  const height = Math.max(240, Math.round(viewport ? viewport.height : document.documentElement.clientHeight || window.innerHeight));
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
 }
-window.addEventListener('resize', () => { if (state.running) resizeCanvas(); });
+let resizeTimer = null;
+function handleViewportResize() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    resizeCanvas();
+    if (state.running) {
+      state.planeY = Math.max(CONFIG.hudHeight + CONFIG.planeHeight / 2 + 10,
+        Math.min(canvas.height - CONFIG.planeHeight / 2 - 76, state.planeY));
+      draw();
+    }
+  }, 100);
+}
+window.addEventListener('resize', handleViewportResize);
+window.addEventListener('orientationchange', handleViewportResize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', handleViewportResize);
 
 // ─── CLOUDS ────────────────────────────────────────────────────────────────
 function spawnInitialClouds() {
@@ -1746,14 +1825,19 @@ function endGame(won, message) {
   const MOBILE_MAX_WIDTH = 900; // mesmo limite usado na media query do CSS
 
   function checkOrientation() {
-    const isSmallScreen = window.innerWidth <= MOBILE_MAX_WIDTH;
-    const isPortrait = window.innerHeight > window.innerWidth;
-    document.body.classList.toggle('force-rotate', isSmallScreen && isPortrait);
+    const width = Math.round(window.visualViewport ? window.visualViewport.width : window.innerWidth);
+    const height = Math.round(window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    const isSmallScreen = Math.min(width, height) <= MOBILE_MAX_WIDTH;
+    const isTouchDevice = (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches)
+      || (navigator.maxTouchPoints > 0);
+    const isPortrait = height > width;
+    document.body.classList.toggle('force-rotate', isTouchDevice && isSmallScreen && isPortrait);
   }
 
   checkOrientation();
   window.addEventListener('resize', checkOrientation);
   window.addEventListener('orientationchange', checkOrientation);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', checkOrientation);
 })();
 
 // Ao abrir a página, leva o foco à tela inicial para o leitor ler o conteúdo dela
